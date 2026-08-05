@@ -87,7 +87,7 @@ export default function LoginPage() {
               </p>
             )}
 
-            <Button type="submit" size="block" loading={submitting} className="mt-2">
+            <Button type="submit" size="block" loading={submitting} className="mt-2 text-white">
               Login
               {!submitting && <LogIn className="h-4 w-4" aria-hidden />}
             </Button>
