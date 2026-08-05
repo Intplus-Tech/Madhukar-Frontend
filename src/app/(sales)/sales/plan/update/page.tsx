@@ -69,7 +69,7 @@ export default function PlanningUpdatePage() {
             description="Submit a plan first, then come back to record the day's results."
           />
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3 ">
             {filtered.map((row) => (
               <DealerPlanCard
                 key={row.dealerId}

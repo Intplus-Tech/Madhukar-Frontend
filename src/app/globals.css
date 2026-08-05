@@ -4,9 +4,10 @@
 
 @layer base {
   :root {
-    --header-h: 56px;
-    --bottom-nav-h: 72px;
-  }
+  --header-h: 56px;
+  --bottom-nav-h: 72px;
+  --radius-card: 12px;
+}
 
   * {
     @apply border-line;

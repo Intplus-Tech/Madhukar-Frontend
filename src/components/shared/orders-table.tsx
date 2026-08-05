@@ -88,7 +88,7 @@ export function OrderFilterBar({
           />
         </div>
 
-        <Button onClick={onApply} loading={applying}>
+        <Button onClick={onApply} loading={applying} className="text-white">
           <SlidersHorizontal className="h-4 w-4" aria-hidden />
           Apply Filters
         </Button>
@@ -100,7 +100,7 @@ export function OrderFilterBar({
             </Button>
           )}
           {onExport && (
-            <Button variant="secondary" onClick={onExport}>
+            <Button variant="secondary" onClick={onExport} className="text-white">
               Export
             </Button>
           )}

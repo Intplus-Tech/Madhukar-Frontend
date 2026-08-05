@@ -34,12 +34,12 @@ export default function AccountsDashboardPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="secondary">
+          <Button variant="secondary" className="text-black bg-white">
             <CalendarDays className="h-4 w-4" aria-hidden />
             This Week
           </Button>
-          <Button onClick={() => void exportData()}>
-            <Download className="h-4 w-4" aria-hidden />
+          <Button onClick={() => void exportData()} className="text-white">
+            <Download className="h-4 w-4 text-white" aria-hidden />
             Export Data
           </Button>
         </div>
@@ -120,7 +120,7 @@ export default function AccountsDashboardPage() {
                     </span>
                   </Td>
                   <Td className="text-right">
-                    <Button size="sm" onClick={() => setBillingOrderId(row.id)}>
+                    <Button size="sm" onClick={() => setBillingOrderId(row.id)} className="text-white">
                       Bill Now
                     </Button>
                   </Td>

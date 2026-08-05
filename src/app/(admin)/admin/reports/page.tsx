@@ -55,8 +55,8 @@ export default function AdminReportsPage() {
               className="min-w-[160px]"
               aria-label="Reporting month"
             />
-            <Button variant="secondary">
-              <UserPlus className="h-4 w-4" aria-hidden />
+            <Button variant="secondary" className="text-black bg-white">
+              <UserPlus className="h-4 w-4 text-black" aria-hidden />
               Add User
             </Button>
           </div>

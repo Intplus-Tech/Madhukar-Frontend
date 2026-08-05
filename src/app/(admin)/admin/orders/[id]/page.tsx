@@ -95,7 +95,7 @@ export default function AdminOrderDetailPage({
             Placed on {formatDate(order.createdAt)} by {order.salesRep.name} (Sales Rep)
           </p>
         </div>
-        <Button variant="secondary" onClick={() => router.back()}>
+        <Button variant="secondary" onClick={() => router.back()} className="text-black bg-white">
           Back
         </Button>
       </div>
@@ -224,7 +224,7 @@ export default function AdminOrderDetailPage({
         </p>
 
         <div className="flex flex-wrap gap-3">
-          <Button variant="secondary">Save Draft</Button>
+          <Button variant="secondary" className="text-black bg-white">Save Draft</Button>
           <Button
             variant="navy"
             disabled={isComplete || !note.trim()}

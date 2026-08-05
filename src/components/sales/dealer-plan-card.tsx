@@ -155,7 +155,7 @@ export function DealerPlanCard({
             />
           </div>
 
-          <Button type="submit" size="block" loading={submitting} className="tracking-[0.06em]">
+          <Button type="submit" size="block" loading={submitting} className="tracking-[0.06em] text-white">
             {isUpdate ? "SUBMIT TODAY'S REPORT" : "SUBMIT PLAN"}
           </Button>
         </form>

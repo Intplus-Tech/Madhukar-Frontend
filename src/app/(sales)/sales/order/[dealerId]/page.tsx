@@ -231,7 +231,7 @@ export default function ComposeOrderPage({
           disabled={lines.length === 0}
           loading={createOrder.isPending}
           onClick={() => createOrder.mutate()}
-          className="tracking-[0.06em]"
+          className="tracking-[0.06em] text-white"
         >
           SUBMIT ISSUE
         </Button>

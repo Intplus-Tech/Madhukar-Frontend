@@ -101,13 +101,13 @@ export function BillingModal({
       title="Order Review & Billing"
       footer={
         <div className="flex items-center gap-3">
-          <Button variant="secondary" className="flex-1" onClick={onClose}>
+          <Button variant="secondary" className="flex-1 text-white" onClick={onClose}>
             Cancel
           </Button>
           {allBilled ? (
             <Button
               variant="success"
-              className="flex-1"
+              className="flex-1 text-white"
               loading={confirm.isPending}
               onClick={() => confirm.mutate()}
             >
@@ -116,7 +116,7 @@ export function BillingModal({
           ) : (
             <Button
               variant="danger"
-              className="flex-1"
+              className="flex-1 text-blaxk"
               disabled={noneBilled && !note.trim()}
               loading={sendFeedback.isPending}
               onClick={() => sendFeedback.mutate()}

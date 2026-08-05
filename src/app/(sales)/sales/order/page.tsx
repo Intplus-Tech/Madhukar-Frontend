@@ -42,12 +42,12 @@ export default function OrderPage() {
           }}
           onKeyDown={(e) => e.key === "Enter" && setSearched(true)}
           placeholder="Search dealers or locations..."
-          leading={<Search className="h-4 w-4" />}
+          leading={<Search className="h-4 w-4 text-white" />}
           className="border-line bg-surface"
           aria-label="Search dealers"
         />
 
-        <Button size="block" onClick={() => setSearched(true)} className="tracking-[0.06em]">
+        <Button size="block" onClick={() => setSearched(true)} className="tracking-[0.06em] text-white">
           SEARCH DEALER
         </Button>
 

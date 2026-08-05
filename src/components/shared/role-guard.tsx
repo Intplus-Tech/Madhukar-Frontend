@@ -7,13 +7,18 @@ import { useAuth } from "@/providers/auth-provider";
 import { ROLE_HOME } from "@/lib/constants";
 import type { UserRole } from "@/types/domain";
 
-/**
- * Client-side gate. Once real auth lands, move this to middleware.ts so the
- * check happens before the page is served rather than after hydration.
- */
 export function RoleGuard({ allow, children }: { allow: UserRole; children: ReactNode }) {
   const { user, isLoading } = useAuth();
   const router = useRouter();
+
+  // TEMPORARY — remove once the spinner is diagnosed
+  console.log("[RoleGuard]", {
+    allow,
+    isLoading,
+    hasUser: Boolean(user),
+    role: user?.role,
+    email: user?.email,
+  });
 
   useEffect(() => {
     if (isLoading) return;

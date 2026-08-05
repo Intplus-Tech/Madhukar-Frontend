@@ -88,12 +88,12 @@ const config: Config = {
         display: ["36px", { lineHeight: "42px", letterSpacing: "-0.02em" }],
         "display-lg": ["48px", { lineHeight: "56px", letterSpacing: "-0.025em" }],
       },
-
-      borderRadius: {
-        card: "12px",
-        field: "10px",
-        pill: "9999px",
-      },
+           
+          borderRadius: {
+          card: "var(--radius-card, 12px)",
+          field: "10px",
+          pill: "9999px",
+        },
 
       boxShadow: {
         card: "0 1px 2px 0 rgba(16,24,40,0.04)",

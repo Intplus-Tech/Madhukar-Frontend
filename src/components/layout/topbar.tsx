@@ -11,6 +11,7 @@ import { useAuth } from "@/providers/auth-provider";
 export function TopBar({
   brand,
   searchPlaceholder = "Search orders...",
+  searchAlign = "end",
   showRefresh = false,
   onOpenMenu,
   onRefresh,
@@ -18,6 +19,8 @@ export function TopBar({
 }: {
   brand?: string;
   searchPlaceholder?: string;
+  /** Figma places the search left on accounts and right-of-centre on admin. */
+  searchAlign?: "start" | "end";
   showRefresh?: boolean;
   onOpenMenu: () => void;
   onRefresh?: () => void;
@@ -33,25 +36,37 @@ export function TopBar({
   return (
     <header
       className={cn(
-        "flex h-16 shrink-0 items-center gap-3 border-b border-line bg-surface px-4 lg:px-6",
+        "flex h-16 shrink-0 items-center gap-4 border-b border-line bg-surface px-4 lg:px-6",
         className,
       )}
     >
-      <button
-        onClick={onOpenMenu}
-        className="rounded-field p-2 text-ink transition-colors hover:bg-surface-muted lg:hidden"
-        aria-label="Open navigation"
+      {/*
+        The two roles place the search differently in Figma: accounts pins it
+        to the left of the content area, admin sits it beside the icons. The
+        flex-1 side groups make either position stable as the header resizes.
+      */}
+      <div
+        className={cn(
+          "flex min-w-0 items-center gap-3",
+          searchAlign === "end" ? "flex-1" : "shrink-0",
+        )}
       >
-        <Menu className="h-5 w-5" />
-      </button>
+        <button
+          onClick={onOpenMenu}
+          className="-ml-2 rounded-field p-2 text-ink transition-colors hover:bg-surface-muted lg:hidden"
+          aria-label="Open navigation"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
 
-      {brand && (
-        <span className="hidden font-display text-body-lg font-medium text-ink lg:block">
-          {brand}
-        </span>
-      )}
+        {brand && (
+          <span className="hidden truncate font-display text-body-lg font-medium text-ink lg:block">
+            {brand}
+          </span>
+        )}
+      </div>
 
-      <div className="mx-auto w-full max-w-md">
+      <div className={cn("w-full min-w-0 max-w-md shrink", searchAlign === "start" && "mr-auto")}>
         <label className="sr-only" htmlFor="global-search">
           Search
         </label>
