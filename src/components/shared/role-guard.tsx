@@ -11,14 +11,7 @@ export function RoleGuard({ allow, children }: { allow: UserRole; children: Reac
   const { user, isLoading } = useAuth();
   const router = useRouter();
 
-  // TEMPORARY — remove once the spinner is diagnosed
-  console.log("[RoleGuard]", {
-    allow,
-    isLoading,
-    hasUser: Boolean(user),
-    role: user?.role,
-    email: user?.email,
-  });
+    
 
   useEffect(() => {
     if (isLoading) return;
