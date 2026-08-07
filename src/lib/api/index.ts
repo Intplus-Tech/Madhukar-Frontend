@@ -3,6 +3,7 @@ export { dealerService, productService } from "./services/dealers";
 export { planningService } from "./services/planning";
 export { orderService } from "./services/orders";
 export { reportService } from "./services/reports";
+export { teamService } from "./services/team";
 export { notificationService } from "./services/notifications";
 export { USE_MOCK, API_BASE_URL, ApiRequestError, tokenStore } from "./http";
 

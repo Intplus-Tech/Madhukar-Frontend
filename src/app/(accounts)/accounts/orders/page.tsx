@@ -10,7 +10,8 @@ import {
   OrdersTable,
   type OrderFilterState,
 } from "@/components/shared";
-import { BillingModal } from "@/components/accounts";
+import { BillingModal, DockedReviewTab } from "@/components/accounts";
+import { useBillingQueue } from "@/hooks/use-billing-queue";
 import { orderService } from "@/lib/api";
 import { qk } from "@/lib/api/queryKeys";
 import { useLookup } from "@/hooks/use-lookup";
@@ -28,7 +29,6 @@ function AccountsOrdersInner() {
     status: initialStatus,
   });
   const [page, setPage] = useState(1);
-  const [billingOrderId, setBillingOrderId] = useState<string | null>(null);
 
   const { dealerName, repName, reps } = useLookup();
   const filters = toApiFilters(applied);
@@ -37,6 +37,11 @@ function AccountsOrdersInner() {
     queryKey: qk.orders(filters, page),
     queryFn: () => orderService.list(filters, page, PAGE_SIZE),
   });
+
+  const billing = useBillingQueue(
+    (data?.data ?? []).map((o) => o.id),
+    (id) => data?.data.find((o) => o.id === id)?.orderNumber ?? id,
+  );
 
   const totals = useQuery({
     queryKey: qk.orders({}, 0),
@@ -88,7 +93,7 @@ function AccountsOrdersInner() {
         loading={isLoading}
         dealerName={dealerName}
         repName={repName}
-        onAction={(order) => setBillingOrderId(order.id)}
+        onAction={(order) => billing.openAt(order.id)}
         actionLabel="Review and bill"
       />
 
@@ -103,10 +108,17 @@ function AccountsOrdersInner() {
       )}
 
       <BillingModal
-        orderId={billingOrderId}
-        open={Boolean(billingOrderId)}
-        onClose={() => setBillingOrderId(null)}
+        orderId={billing.activeId}
+        open={billing.isOpen}
+        onClose={billing.close}
+        onMinimise={billing.minimise}
+        onAdvance={billing.advance}
+        queuePosition={billing.position}
       />
+
+      {billing.isDocked && billing.activeId && (
+        <DockedReviewTab label={billing.activeLabel ?? "order"} onRestore={billing.restore} />
+      )}
     </div>
   );
 }

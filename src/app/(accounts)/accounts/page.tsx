@@ -1,22 +1,27 @@
 "use client";
 
-import { useState } from "react";
+
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { AlertCircle, CalendarDays, CheckCircle2, Download } from "lucide-react";
 import { Button, CardSkeleton, ProgressBar, Table, TableWrap, Td, Th } from "@/components/ui";
 import { StatCard } from "@/components/shared";
-import { BillingModal } from "@/components/accounts";
+import { BillingModal, DockedReviewTab } from "@/components/accounts";
+import { useBillingQueue } from "@/hooks/use-billing-queue";
 import { reportService, orderService } from "@/lib/api";
 import { qk } from "@/lib/api/queryKeys";
 
 export default function AccountsDashboardPage() {
-  const [billingOrderId, setBillingOrderId] = useState<string | null>(null);
-
   const { data, isLoading } = useQuery({
     queryKey: qk.accountsOverview,
     queryFn: () => reportService.accountsOverview(),
   });
+
+  // Review session: open → minimise → restore, advancing through the queue
+  const billing = useBillingQueue(
+    (data?.needsAttention ?? []).map((row) => row.id),
+    (id) => data?.needsAttention.find((r) => r.id === id)?.orderNumber ?? id,
+  );
 
   async function exportData() {
     const blob = await orderService.exportCsv({});
@@ -34,12 +39,12 @@ export default function AccountsDashboardPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="secondary" className="text-black bg-white">
+          <Button variant="secondary" className="rounded-none">
             <CalendarDays className="h-4 w-4" aria-hidden />
             This Week
           </Button>
-          <Button onClick={() => void exportData()} className="text-white">
-            <Download className="h-4 w-4 text-white" aria-hidden />
+          <Button onClick={() => void exportData()} className="rounded-none text-white">
+            <Download className="h-4 w-4" aria-hidden />
             Export Data
           </Button>
         </div>
@@ -74,7 +79,7 @@ export default function AccountsDashboardPage() {
               }
               trailing={<AlertCircle className="h-[18px] w-[18px] text-danger" aria-hidden />}
               footer={
-                <span className="inline-flex rounded bg-danger-deep px-2 py-1 text-meta font-medium text-ink-inverse">
+                <span className="inline-flex rounded bg-danger-deep px-2 py-1 text-meta font-medium text-ink-inverse rounded-none">
                   Action Required
                 </span>
               }
@@ -120,7 +125,7 @@ export default function AccountsDashboardPage() {
                     </span>
                   </Td>
                   <Td className="text-right">
-                    <Button size="sm" onClick={() => setBillingOrderId(row.id)} className="text-white">
+                    <Button size="sm" onClick={() => billing.openAt(row.id)} className="text-white rounded-none">
                       Bill Now
                     </Button>
                   </Td>
@@ -141,10 +146,17 @@ export default function AccountsDashboardPage() {
       </section>
 
       <BillingModal
-        orderId={billingOrderId}
-        open={Boolean(billingOrderId)}
-        onClose={() => setBillingOrderId(null)}
+        orderId={billing.activeId}
+        open={billing.isOpen}
+        onClose={billing.close}
+        onMinimise={billing.minimise}
+        onAdvance={billing.advance}
+        queuePosition={billing.position}
       />
+
+      {billing.isDocked && billing.activeId && (
+        <DockedReviewTab label={billing.activeLabel ?? "order"} onRestore={billing.restore} />
+      )}
     </div>
   );
 }

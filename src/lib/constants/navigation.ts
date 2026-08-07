@@ -21,7 +21,7 @@ export const ACCOUNTS_NAV: NavItem[] = [
 export const ADMIN_NAV: NavItem[] = [
   { label: "Dashboard", href: "/admin", icon: "LayoutGrid" },
   { label: "Sales Orders", href: "/admin/orders", icon: "Receipt" },
-  { label: "Reports", href: "/admin/reports", icon: "BarChart3" },
+  { label: "Reports & Team", href: "/admin/reports", icon: "BarChart3" },
 ];
 
 export const ROLE_HOME: Record<UserRole, string> = {

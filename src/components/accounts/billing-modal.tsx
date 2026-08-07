@@ -21,10 +21,19 @@ export function BillingModal({
   orderId,
   open,
   onClose,
+  onMinimise,
+  onAdvance,
+  queuePosition,
 }: {
   orderId: string | null;
   open: boolean;
   onClose: () => void;
+  /** Docks the panel instead of discarding it. */
+  onMinimise?: () => void;
+  /** Called after a successful confirm/feedback so the queue can load the next order. */
+  onAdvance?: () => boolean;
+  /** e.g. { index: 3, total: 84 } — shown in the header. */
+  queuePosition?: { index: number; total: number };
 }) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -57,7 +66,9 @@ export function BillingModal({
     onSuccess: () => {
       invalidate();
       notify("Order confirmed");
-      onClose();
+      // Stay open and pull in the next bill; only close if the queue is empty
+      const advanced = onAdvance?.() ?? false;
+      if (!advanced) onClose();
     },
     onError: () => notify("Couldn't confirm the order. Try again.", "error"),
   });
@@ -76,7 +87,8 @@ export function BillingModal({
     onSuccess: () => {
       invalidate();
       notify("Feedback sent to the sales rep");
-      onClose();
+      const advanced = onAdvance?.() ?? false;
+      if (!advanced) onClose();
     },
     onError: () => notify("Couldn't send feedback. Try again.", "error"),
   });
@@ -97,17 +109,30 @@ export function BillingModal({
     <Modal
       open={open}
       onClose={onClose}
-      eyebrow={order ? formatDate(order.createdAt) : undefined}
+      dismissOnBackdrop={false}
+      onMinimise={onMinimise}
+      eyebrow={
+        order ? (
+          <span className="flex items-center gap-2">
+            {formatDate(order.createdAt)}
+            {queuePosition && (
+              <span className="text-meta text-ink-faint">
+                · {queuePosition.index} of {queuePosition.total}
+              </span>
+            )}
+          </span>
+        ) : undefined
+      }
       title="Order Review & Billing"
       footer={
         <div className="flex items-center gap-3">
-          <Button variant="secondary" className="flex-1 text-white" onClick={onClose}>
+          <Button variant="secondary" className="flex-1 rounded-none" onClick={onClose}>
             Cancel
           </Button>
           {allBilled ? (
             <Button
               variant="success"
-              className="flex-1 text-white"
+              className="flex-1 rounded-none"
               loading={confirm.isPending}
               onClick={() => confirm.mutate()}
             >
@@ -116,7 +141,7 @@ export function BillingModal({
           ) : (
             <Button
               variant="danger"
-              className="flex-1 text-blaxk"
+              className="flex-1 rounded-none"
               disabled={noneBilled && !note.trim()}
               loading={sendFeedback.isPending}
               onClick={() => sendFeedback.mutate()}
@@ -129,18 +154,18 @@ export function BillingModal({
     >
       {isLoading || !order ? (
         <div className="space-y-4">
-          <Skeleton className="h-16 w-full rounded-card" />
-          <Skeleton className="h-40 w-full rounded-card" />
-          <Skeleton className="h-32 w-full rounded-card" />
+          <Skeleton className="h-16 w-full rounded-none" />
+          <Skeleton className="h-40 w-full rounded-none" />
+          <Skeleton className="h-32 w-full rounded-none" />
         </div>
       ) : (
         <div className="space-y-5">
-          <div className="rounded-card bg-surface-muted px-4 py-3">
+          <div className="rounded-none bg-surface-muted px-4 py-3">
             <p className="text-meta text-ink-muted">Account Rep</p>
             <p className="mt-0.5 text-body-lg font-semibold text-ink">{order.salesRep.name}</p>
           </div>
 
-          <section className="rounded-card border border-line p-4">
+          <section className="rounded-none border border-line p-4">
             <div className="flex items-start justify-between gap-3">
               <h3 className="text-body-lg font-semibold text-ink">Dealer Information</h3>
               {order.priority === "urgent" && (
@@ -183,7 +208,7 @@ export function BillingModal({
               Line items
             </h3>
 
-            <div className="mt-3 grid grid-cols-[1fr_auto_auto] items-center gap-x-4 border-b border-line pb-2">
+            <div className="mt-3 grid grid-cols-[1fr_auto_auto] items-center gap-x-4 border-b border-line pb-2 rounded-none">
               <span className="text-meta text-ink-muted">Item</span>
               <span className="text-meta text-ink-muted">Qty</span>
               <span className="text-meta text-ink-muted">Status</span>
@@ -195,7 +220,7 @@ export function BillingModal({
                 return (
                   <li
                     key={item.id}
-                    className="grid grid-cols-[1fr_auto_auto] items-center gap-x-4 rounded-field border border-line px-3.5 py-3"
+                    className="grid grid-cols-[1fr_auto_auto] items-center gap-x-4 rounded-none border border-line px-3.5 py-3"
                   >
                     <span className="min-w-0 truncate text-body text-ink">{item.productName}</span>
                     <span className="text-body tabular-nums text-ink">{item.quantity}</span>
@@ -229,10 +254,10 @@ export function BillingModal({
             </ul>
           </section>
 
-          <section className="rounded-card border border-line p-4">
+          <section className="rounded-none border border-line p-4 ">
             <label
               htmlFor="order-note"
-              className="text-eyebrow font-semibold uppercase tracking-wide text-ink"
+              className="text-eyebrow font-semibold uppercase tracking-wide text-ink rounded-none"
             >
               Order note
             </label>
@@ -242,7 +267,7 @@ export function BillingModal({
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="Add specific billing instructions..."
-              className="mt-2 bg-surface-muted"
+              className="mt-2 bg-surface-muted rounded-none"
             />
             {!allBilled && (
               <p className="mt-2 text-meta text-ink-muted">

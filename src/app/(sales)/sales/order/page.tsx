@@ -47,7 +47,7 @@ export default function OrderPage() {
           aria-label="Search dealers"
         />
 
-        <Button size="block" onClick={() => setSearched(true)} className="tracking-[0.06em] text-white">
+        <Button size="block" onClick={() => setSearched(true)} className="tracking-[0.06em] text-white rounded-none">
           SEARCH DEALER
         </Button>
 

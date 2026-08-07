@@ -26,7 +26,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
     <div
       className={cn(
         "flex h-12 w-full items-center gap-2 rounded-field border bg-surface-muted px-3.5",
-        "focus-within:ring-2 focus-within:ring-ink focus-within:ring-offset-1 focus-within:ring-offset-app",
+        // The wrapper owns the focus state — darkening its own border rather
+        // than drawing a ring, which would read as a second border inside.
+        "transition-colors focus-within:border-ink",
         invalid ? "border-danger" : "border-line",
         className,
       )}
@@ -49,8 +51,8 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<H
         ref={ref}
         className={cn(
           "w-full rounded-field border border-line bg-surface-muted px-3.5 py-3 text-body text-ink",
-          "outline-none placeholder:text-ink-faint",
-          "focus:ring-2 focus:ring-ink focus:ring-offset-1 focus:ring-offset-app",
+          "outline-none transition-colors placeholder:text-ink-faint",
+          "focus:border-ink",
           className,
         )}
         {...props}

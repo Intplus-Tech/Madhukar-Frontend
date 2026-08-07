@@ -61,7 +61,7 @@ export function DealerPlanCard({
         <button
           onClick={onToggle}
           aria-expanded={false}
-          className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left"
+          className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left rounded-none"
         >
           <span className="min-w-0">
             <span className="block truncate text-body-lg font-semibold text-ink">
@@ -133,16 +133,21 @@ export function DealerPlanCard({
               />
             </div>
 
-            {values.hasServiceIssue && (
-              <div className="mt-3 animate-slide-up">
-                <Input
-                  value={values.serviceIssueNote}
-                  onChange={(e) => set("serviceIssueNote", e.target.value)}
-                  placeholder="Specify service issue..."
-                  className="h-11 border-line bg-surface"
-                />
-              </div>
-            )}
+            {/*
+              Always visible, as drawn in the Figma — the field sits inside the
+              grey block rather than appearing only once the toggle is on.
+            */}
+            <div className="mt-3">
+              <Input
+                value={values.serviceIssueNote}
+                onChange={(e) => set("serviceIssueNote", e.target.value)}
+                placeholder={
+                  isUpdate ? "What was done about it?" : "Specify service issue..."
+                }
+                aria-label="Service issue detail"
+                className="h-11 border-line bg-surface"
+              />
+            </div>
           </div>
 
           <div>
@@ -155,7 +160,7 @@ export function DealerPlanCard({
             />
           </div>
 
-          <Button type="submit" size="block" loading={submitting} className="tracking-[0.06em] text-white">
+          <Button type="submit" size="block" loading={submitting} className="tracking-[0.06em] text-white rounded-none">
             {isUpdate ? "SUBMIT TODAY'S REPORT" : "SUBMIT PLAN"}
           </Button>
         </form>

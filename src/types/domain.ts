@@ -472,3 +472,53 @@ export interface PlanVsAchievedPoint {
 }
 
 export type DashboardPeriod = 'today' | 'wtd' | 'mtd';
+
+// ─────────────────────────────────────────────────────────────
+// Team & Access Management (admin › Reports & Team)
+// ─────────────────────────────────────────────────────────────
+
+export type WeekDay = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat';
+
+export type TeamMemberStatus = 'on_field' | 'active' | 'inactive';
+
+/** Position label shown in the Role column and the edit modal's select. */
+export type TeamPosition = 'Sales Rep' | 'Accountant' | 'Manager';
+
+export interface TeamMemberPermissions {
+  /** "Allow Order Creation on behalf of dealers" */
+  allowOrderCreation: boolean;
+  /** "Allow Manual Discount Overrides" */
+  allowDiscountOverride: boolean;
+}
+
+export interface TeamMember {
+  id: ID;
+  name: string;
+  email: string;
+  position: TeamPosition;
+  status: TeamMemberStatus;
+
+  /** Sales reps plan visits; accountants process bills. Same bar, different noun. */
+  plannedCount: number;
+  plannedTotal: number;
+
+  routeId?: ID;
+  routeName?: string;
+  /** Empty for full-time office staff, which the UI renders as "Mon – Fri (Full Time)". */
+  schedule: WeekDay[];
+  isFullTime: boolean;
+
+  permissions: TeamMemberPermissions;
+}
+
+export type TeamTab = 'all' | 'sales' | 'accounts';
+
+export interface UpdateTeamMemberPayload {
+  id: ID;
+  name: string;
+  position: TeamPosition;
+  routeId?: ID;
+  plannedTotal: number;
+  schedule: WeekDay[];
+  permissions: TeamMemberPermissions;
+}

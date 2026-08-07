@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
+import { Minus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function Modal({
@@ -13,6 +13,10 @@ export function Modal({
   children,
   footer,
   className,
+  /** When false, clicking the backdrop and pressing Escape leave the panel open. */
+  dismissOnBackdrop = true,
+  /** Renders a minimise control beside the close button. */
+  onMinimise,
 }: {
   open: boolean;
   onClose: () => void;
@@ -21,13 +25,18 @@ export function Modal({
   children: ReactNode;
   footer?: ReactNode;
   className?: string;
+  dismissOnBackdrop?: boolean;
+  onMinimise?: () => void;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key !== "Escape") return;
+      // A docked review panel shouldn't vanish on a stray Escape
+      if (onMinimise) onMinimise();
+      else if (dismissOnBackdrop) onClose();
     };
     document.addEventListener("keydown", onKey);
     const previousOverflow = document.body.style.overflow;
@@ -37,16 +46,22 @@ export function Modal({
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = previousOverflow;
     };
-  }, [open, onClose]);
+  }, [open, onClose, dismissOnBackdrop, onMinimise]);
 
   if (!open || typeof document === "undefined") return null;
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex animate-fade-in">
+      {/*
+        Clicking away dismisses the panel, but a review session isn't thrown
+        out: when `onMinimise` is supplied the panel docks to the right edge
+        with its ticked items and note intact, so the user can pick it back up.
+      */}
       <button
-        aria-label="Close dialog"
-        onClick={onClose}
-        className="absolute inset-0 bg-ink/30 backdrop-blur-[1px]"
+        aria-label={onMinimise ? "Minimise dialog" : "Close dialog"}
+        onClick={onMinimise ?? (dismissOnBackdrop ? onClose : undefined)}
+        disabled={!onMinimise && !dismissOnBackdrop}
+        className="absolute inset-0 bg-ink/30 backdrop-blur-[1px] disabled:cursor-default"
       />
 
       {/*
@@ -71,13 +86,25 @@ export function Modal({
               {title}
             </h2>
           </div>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            className="rounded p-1 text-ink transition-colors hover:bg-line-faint"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-1">
+            {onMinimise && (
+              <button
+                onClick={onMinimise}
+                aria-label="Minimise to side"
+                title="Minimise — reopen from the tab on the right"
+                className="rounded p-1 text-ink-muted transition-colors hover:bg-line-faint hover:text-ink"
+              >
+                <Minus className="h-5 w-5" />
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              aria-label="Close"
+              className="rounded p-1 text-ink transition-colors hover:bg-line-faint"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </header>
 
         <div className="flex-1 overflow-y-auto scrollbar-thin px-5 py-5">{children}</div>

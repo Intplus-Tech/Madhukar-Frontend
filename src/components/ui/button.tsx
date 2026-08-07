@@ -9,8 +9,9 @@ type Size = "sm" | "md" | "lg" | "block";
 
 const VARIANTS: Record<Variant, string> = {
   // The black CTA used across every screen in the Figma
+ 
   primary: "bg-ink text-ink-inverse hover:bg-black disabled:bg-line-strong disabled:text-ink-inverse",
-  secondary: "bg-ink text-ink-inverse border border-ink hover:bg-black",
+  secondary: "bg-surface text-ink border border-line hover:bg-surface-muted",
   navy: "bg-admin-accent text-ink-inverse hover:brightness-110",
   danger: "bg-danger-deep text-ink-inverse hover:brightness-110",
   success: "bg-success text-ink-inverse hover:brightness-105",
@@ -41,7 +42,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       type={type}
       disabled={disabled || loading}
       className={cn(
-        "inline-flex items-center justify-center  font-medium",
+        "inline-flex items-center justify-center rounded-field font-medium",
         "transition-colors duration-150",
         "disabled:cursor-not-allowed disabled:opacity-60",
         VARIANTS[variant],

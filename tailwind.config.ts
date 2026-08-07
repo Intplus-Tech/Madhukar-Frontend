@@ -15,6 +15,12 @@ const config: Config = {
         app: "#F7F9FB", // page background
         surface: "#FFFFFF", // cards, panels, modals
         "surface-muted": "#F7F9FB", // inset fields, table headers
+            
+           // Segmented control (Priority Level on the order screen)
+        segment: {
+          DEFAULT: "#ECEEF0",
+          border: "#C6C6CD",
+        },
 
         // ── Sidebars ────────────────────────────────────────────────
         admin: {
@@ -29,10 +35,10 @@ const config: Config = {
         },
 
         // ── Ink ─────────────────────────────────────────────────────
-        ink: {
-          DEFAULT: "#111827", // primary text
-          muted: "#6B7280", // secondary text
-          faint: "#9CA3AF", // placeholders, meta
+          ink: {
+          DEFAULT: "#000000",
+          muted: "#6B7280",
+          faint: "#9CA3AF",
           inverse: "#FFFFFF",
         },
 
@@ -65,6 +71,15 @@ const config: Config = {
           soft: "#DBEAFE", // "Visited" pill, "0% Complete" badge
           ink: "#1E40AF",
         },
+        // Indigo accent introduced by the Team & Access Management design
+        brand: {
+          DEFAULT: "#4F46E5",
+          hover: "#4338CA",
+          soft: "#EEF2FF",
+          ink: "#3730A3",
+          border: "#C7D2FE",
+        },
+
         accentPurple: {
           soft: "#EDE9FE", // "Payment Collected" pill
           ink: "#5B21B6",
@@ -88,12 +103,12 @@ const config: Config = {
         display: ["36px", { lineHeight: "42px", letterSpacing: "-0.02em" }],
         "display-lg": ["48px", { lineHeight: "56px", letterSpacing: "-0.025em" }],
       },
-           
-          borderRadius: {
-          card: "var(--radius-card, 12px)",
-          field: "10px",
-          pill: "9999px",
-        },
+
+      borderRadius: {
+        card: "var(--radius-card, 12px)",
+        field: "10px",
+        pill: "9999px",
+      },
 
       boxShadow: {
         card: "0 1px 2px 0 rgba(16,24,40,0.04)",

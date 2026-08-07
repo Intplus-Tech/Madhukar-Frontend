@@ -80,7 +80,7 @@ export function Sidebar({
                   onClick={onNavigate}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "flex items-center gap-3 rounded-field px-3 py-2.5 text-body transition-colors",
+                    "flex items-center gap-3 rounded-field px-3 py-2.5 text-body transition-colors rounded-none",
                     active
                       ? isAdmin
                         ? "bg-admin-sidebar-active font-medium text-admin-sidebar"

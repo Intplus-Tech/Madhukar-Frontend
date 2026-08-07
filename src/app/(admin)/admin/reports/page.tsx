@@ -2,160 +2,176 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { BarChart3, UserPlus } from "lucide-react";
-import {
-  Avatar,
-  Button,
-  Select,
-  Table,
-  TableSkeleton,
-  TableWrap,
-  Td,
-  Th,
-} from "@/components/ui";
-import { reportService } from "@/lib/api";
-import { qk } from "@/lib/api/queryKeys";
-import { cn, formatCurrency } from "@/lib/utils";
+import { BarChart3, Plus } from "lucide-react";
+import { Avatar, Button, EmptyRow, Table, TableSkeleton, TableWrap, Td, Th } from "@/components/ui";
+import { EditTeamMemberModal } from "@/components/admin";
+import { teamService } from "@/lib/api";
+import { cn } from "@/lib/utils";
+import type { TeamMember, TeamMemberStatus, TeamTab, WeekDay } from "@/types/domain";
 
-const PERIOD_OPTIONS = [
-  { label: "October 2026", value: "2026-10" },
-  { label: "September 2026", value: "2026-09" },
-  { label: "August 2026", value: "2026-08" },
-];
+const DAY_LABEL: Record<WeekDay, string> = {
+  mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat",
+};
+
+const STATUS_STYLE: Record<TeamMemberStatus, string> = {
+  on_field: "bg-success-soft text-success-ink",
+  active: "bg-info-soft text-info-ink",
+  inactive: "bg-line-faint text-ink-muted",
+};
+
+const STATUS_LABEL: Record<TeamMemberStatus, string> = {
+  on_field: "On Field", active: "Active", inactive: "Inactive",
+};
 
 export default function AdminReportsPage() {
-  const [period, setPeriod] = useState(PERIOD_OPTIONS[0]!.value);
+  const [tab, setTab] = useState<TeamTab>("all");
+  const [editing, setEditing] = useState<TeamMember | null>(null);
 
-  const { data, isLoading } = useQuery({
-    queryKey: qk.teamPerformance(period),
-    queryFn: () => reportService.teamPerformance(period),
+  const { data: members, isLoading } = useQuery({
+    queryKey: ["team", tab],
+    queryFn: () => teamService.list(tab),
   });
+
+  const { data: counts } = useQuery({
+    queryKey: ["team", "counts"],
+    queryFn: () => teamService.counts(),
+  });
+
+  const tabs: Array<{ value: TeamTab; label: string }> = [
+    { value: "all", label: `All Members (${counts?.all ?? 0})` },
+    { value: "sales", label: `Sales Team (${counts?.sales ?? 0})` },
+    { value: "accounts", label: `Accounting Team (${counts?.accounts ?? 0})` },
+  ];
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-display font-semibold text-ink">Reports &amp; Team</h1>
-        <p className="mt-1 text-body text-ink-muted">
-          Manage sales performance and territory assignments.
-        </p>
-      </div>
-
-      <section className="rounded-card border border-line bg-surface">
-        <div className="flex flex-col gap-3 border-b border-line px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="flex items-center gap-2 text-title-sm font-semibold text-ink">
-            <BarChart3 className="h-[18px] w-[18px] text-ink-muted" aria-hidden />
-            Monthly Sales Performance
-          </h2>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <Select
-              options={PERIOD_OPTIONS}
-              value={period}
-              onChange={(e) => setPeriod(e.target.value)}
-              className="min-w-[160px]"
-              aria-label="Reporting month"
-            />
-            <Button variant="secondary" className="text-black bg-white">
-              <UserPlus className="h-4 w-4 text-black" aria-hidden />
-              Add User
-            </Button>
-          </div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="font-display text-display-sm font-bold text-ink">
+            Team &amp; Access Management
+          </h1>
+          <p className="mt-1 text-body text-ink-muted">
+            Manage system roles, execution planning, and user access.
+          </p>
         </div>
 
-        {isLoading || !data ? (
-          <TableSkeleton rows={4} cols={7} />
-        ) : (
-          <TableWrap className="rounded-none border-0">
-            <Table className="min-w-[900px]">
-              <thead>
-                <tr>
-                  <Th>Rep Name</Th>
-                  <Th>Position</Th>
-                  <Th className="text-right">Activity</Th>
-                  <Th className="text-right">Actual Sales</Th>
-                  <Th>% of Target</Th>
-                  <Th className="text-right">Collected</Th>
-                  <Th className="text-right">Outstanding</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.rows.map((row) => (
-                  <tr key={row.userId} className="transition-colors hover:bg-surface-muted">
-                    <Td>
-                      <span className="flex items-center gap-2.5">
-                        <Avatar name={row.name} size="sm" />
-                        <span className="font-medium text-ink">{row.name}</span>
+        <Button className="rounded-lg bg-brand hover:bg-brand-hover">
+          <Plus className="h-4 w-4" aria-hidden />
+          Add Team Member
+        </Button>
+      </div>
+
+      <div role="tablist" aria-label="Team filter" className="flex gap-8 border-b border-line">
+        {tabs.map((option) => {
+          const active = tab === option.value;
+          return (
+            <button
+              key={option.value}
+              role="tab"
+              aria-selected={active}
+              onClick={() => setTab(option.value)}
+              className={cn(
+                "-mb-px border-b-2 pb-3 text-body transition-colors",
+                active
+                  ? "border-brand font-medium text-brand"
+                  : "border-transparent text-ink-muted hover:text-ink",
+              )}
+            >
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {isLoading ? (
+        <TableWrap>
+          <TableSkeleton rows={4} cols={6} />
+        </TableWrap>
+      ) : (
+        <TableWrap className="rounded-lg">
+          <Table className="min-w-[880px]">
+            <thead>
+              <tr>
+                <Th className="px-6">Team Member</Th>
+                <Th>Role</Th>
+                <Th>
+                  Planning
+                  <span className="block font-normal normal-case tracking-normal">
+                    (Achieved / Total)
+                  </span>
+                </Th>
+                <Th>Schedule</Th>
+                <Th>Status</Th>
+                <Th className="text-right">Actions</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {!members?.length ? (
+                <EmptyRow colSpan={6}>No team members in this group yet.</EmptyRow>
+              ) : (
+                members.map((member) => (
+                  <tr key={member.id} className="transition-colors hover:bg-surface-muted">
+                    <Td className="px-6">
+                      <span className="flex items-center gap-3">
+                        <Avatar name={member.name} size="md" />
+                        <span className="min-w-0">
+                          <span className="block truncate font-semibold text-ink">{member.name}</span>
+                          <span className="block truncate text-meta text-ink-muted">{member.email}</span>
+                        </span>
                       </span>
                     </Td>
-                    <Td className="text-ink-muted">{row.position}</Td>
-                    <Td className="text-right tabular-nums">{formatCurrency(row.activity)}</Td>
-                    <Td className="text-right font-semibold tabular-nums">
-                      {formatCurrency(row.actualSales)}
+
+                    <Td className="text-ink-muted">{member.position}</Td>
+                    <Td><PlanningCell member={member} /></Td>
+
+                    <Td className="whitespace-nowrap text-ink-muted">
+                      {member.isFullTime
+                        ? "Mon – Fri (Full Time)"
+                        : member.schedule.map((d) => DAY_LABEL[d]).join(", ")}
                     </Td>
+
                     <Td>
-                      <span className="flex items-center gap-2.5">
-                        <span
-                          className={cn(
-                            "w-10 shrink-0 text-body font-medium tabular-nums",
-                            targetTone(row.targetPercent),
-                          )}
-                        >
-                          {row.targetPercent}%
-                        </span>
-                        <span className="h-1.5 w-20 overflow-hidden rounded-pill bg-line-faint">
-                          <span
-                            className={cn("block h-full rounded-pill", targetBar(row.targetPercent))}
-                            style={{ width: `${Math.min(100, row.targetPercent)}%` }}
-                          />
-                        </span>
+                      <span className={cn("inline-flex rounded-pill px-2.5 py-1 text-meta font-medium", STATUS_STYLE[member.status])}>
+                        {STATUS_LABEL[member.status]}
                       </span>
                     </Td>
-                    <Td className="text-right tabular-nums">{formatCurrency(row.collected)}</Td>
-                    <Td
-                      className={cn(
-                        "text-right tabular-nums",
-                        row.outstanding > 0 ? "text-danger" : "text-ink",
-                      )}
-                    >
-                      {formatCurrency(row.outstanding)}
+
+                    <Td className="text-right">
+                      <button
+                        onClick={() => setEditing(member)}
+                        className="rounded-lg border border-brand-border px-4 py-1.5 text-body font-medium text-brand transition-colors hover:bg-brand-soft"
+                      >
+                        Edit
+                      </button>
                     </Td>
                   </tr>
-                ))}
+                ))
+              )}
+            </tbody>
+          </Table>
+        </TableWrap>
+      )}
 
-                <tr className="bg-surface-muted font-semibold">
-                  <Td className="text-eyebrow uppercase tracking-wide text-ink-muted">
-                    Team Totals
-                  </Td>
-                  <Td />
-                  <Td className="text-right tabular-nums">{formatCurrency(data.totals.activity)}</Td>
-                  <Td className="text-right tabular-nums">
-                    {formatCurrency(data.totals.actualSales)}
-                  </Td>
-                  <Td className="tabular-nums">{data.totals.targetPercent}%</Td>
-                  <Td className="text-right tabular-nums">
-                    {formatCurrency(data.totals.collected)}
-                  </Td>
-                  <Td className="text-right tabular-nums text-danger">
-                    {formatCurrency(data.totals.outstanding)}
-                  </Td>
-                </tr>
-              </tbody>
-            </Table>
-          </TableWrap>
-        )}
-      </section>
+      <EditTeamMemberModal member={editing} open={Boolean(editing)} onClose={() => setEditing(null)} />
     </div>
   );
 }
 
-function targetTone(pct: number) {
-  if (pct >= 100) return "text-success";
-  if (pct >= 90) return "text-ink";
-  return "text-danger";
-}
+function PlanningCell({ member }: { member: TeamMember }) {
+  const pct = Math.round((member.plannedCount / Math.max(1, member.plannedTotal)) * 100);
+  // Reps plan visits; accountants process bills — same bar, different verb.
+  const verb = member.position === "Sales Rep" ? "Planned" : "Processed";
 
-function targetBar(pct: number) {
-  if (pct >= 100) return "bg-success";
-  if (pct >= 90) return "bg-ink";
-  return "bg-danger";
+  return (
+    <span className="flex items-center gap-2.5 whitespace-nowrap">
+      <span className="h-1.5 w-12 shrink-0 overflow-hidden rounded-pill bg-line">
+        <span className="block h-full rounded-pill bg-brand transition-[width] duration-500" style={{ width: `${Math.min(100, pct)}%` }} />
+      </span>
+      <BarChart3 className="h-3.5 w-3.5 shrink-0 text-brand" aria-hidden />
+      <span className="text-body text-ink">
+        {member.plannedCount}/{member.plannedTotal} {verb}
+        {member.position === "Sales Rep" && ` (${pct}%)`}
+      </span>
+    </span>
+  );
 }

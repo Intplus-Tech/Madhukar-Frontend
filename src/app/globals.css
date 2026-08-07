@@ -25,8 +25,19 @@
   }
 
   /* Visible keyboard focus, never a click ring */
-  :focus-visible {
+ /*
+    Visible keyboard focus, never a click ring.
+    Form fields are excluded: their wrapper draws the focus state, and a ring
+    on the inner element as well reads as a second border inside the field.
+  */
+  :focus-visible:not(input):not(textarea):not(select) {
     @apply outline-none ring-2 ring-ink ring-offset-2 ring-offset-app;
+  }
+
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    @apply outline-none;
   }
 
   /* Every numeric field here is currency — spinners are noise */

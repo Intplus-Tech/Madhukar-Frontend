@@ -22,6 +22,9 @@ export const users: User[] = [
   { id: "u6", name: "Sarah Jenkins", email: "sarah@mdapl.com", role: "accounts", isActive: true },
   { id: "u7", name: "Alice Johnson", email: "alice@mdapl.com", role: "accounts", isActive: true },
   { id: "u8", name: "Priya Menon", email: "priya@mdapl.com", role: "admin", isActive: true },
+  { id: "u9", name: "Sagar", email: "sagar@mdapl.com", role: "sales", isActive: true },
+  { id: "u10", name: "Karthik", email: "karthik@mdapl.com", role: "sales", isActive: true },
+  { id: "u11", name: "Smitha", email: "smitha@mdapl.com", role: "accounts", isActive: true },
 ];
 
 export const dealers: Dealer[] = [

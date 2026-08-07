@@ -10,6 +10,7 @@ import type {
   VisitUpdate,
 } from "@/types/domain";
 import * as seed from "./seed";
+import { rosterDealers, rosterRoutes } from "./roster";
 
 /**
  * A mutable in-memory store so mutations (submit plan, bill an order, send
@@ -18,8 +19,8 @@ import * as seed from "./seed";
  */
 class MockDb {
   users: User[] = structuredClone(seed.users);
-  dealers: Dealer[] = structuredClone(seed.dealers);
-  routes: Route[] = structuredClone(seed.routes);
+  dealers: Dealer[] = [...structuredClone(seed.dealers), ...structuredClone(rosterDealers)];
+  routes: Route[] = [...structuredClone(seed.routes), ...structuredClone(rosterRoutes)];
   products: Product[] = structuredClone(seed.products);
   salesOrders: SalesOrder[] = structuredClone(seed.salesOrders);
   feedback: Feedback[] = structuredClone(seed.feedback);

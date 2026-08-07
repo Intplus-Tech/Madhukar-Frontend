@@ -190,10 +190,10 @@ export default function ComposeOrderPage({
         {/* Priority */}
         <div>
           <p className="mb-1.5 text-body font-medium text-ink">Priority level</p>
-          <div
+            <div
             role="radiogroup"
             aria-label="Priority level"
-            className="flex rounded-field bg-surface-muted p-1"
+            className="flex h-[50px] w-full items-stretch rounded-xl border border-segment-border bg-segment p-1"
           >
             {(
               [
@@ -206,8 +206,8 @@ export default function ComposeOrderPage({
                 role="radio"
                 aria-checked={priority === option.value}
                 onClick={() => setPriority(option.value)}
-                className={cn(
-                  "flex-1 rounded-[7px] py-2.5 text-body font-medium transition-colors",
+                  className={cn(
+                  "flex-1 rounded-lg text-body font-medium transition-colors",
                   priority === option.value
                     ? "bg-admin-sidebar text-ink-inverse shadow-card"
                     : "text-ink-muted hover:text-ink",
@@ -231,7 +231,7 @@ export default function ComposeOrderPage({
           disabled={lines.length === 0}
           loading={createOrder.isPending}
           onClick={() => createOrder.mutate()}
-          className="tracking-[0.06em] text-white"
+          className="tracking-[0.06em] text-white rounded-none"
         >
           SUBMIT ISSUE
         </Button>
