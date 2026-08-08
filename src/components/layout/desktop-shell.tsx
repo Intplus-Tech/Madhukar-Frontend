@@ -82,7 +82,7 @@ export function DesktopShell({
 
   if (isFullSpan) {
     return (
-      <div className="flex min-h-dvh flex-col bg-app [--radius-card:8px]">
+      <div className="flex min-h-dvh flex-col bg-app [--radius-card:0px]">
         <div className="sticky top-0 z-40">{topbar}</div>
         {drawer}
 
@@ -98,7 +98,7 @@ export function DesktopShell({
   }
 
   return (
-    <div className="flex min-h-dvh bg-app [--radius-card:8px]">
+    <div className="flex min-h-dvh bg-app [--radius-card:0px] rounded-none">
       <div className="hidden lg:block">
         <div className="sticky top-0 h-dvh">{sidebar()}</div>
       </div>

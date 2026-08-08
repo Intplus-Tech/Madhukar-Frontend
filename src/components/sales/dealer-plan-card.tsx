@@ -57,7 +57,7 @@ export function DealerPlanCard({
 
   if (!expanded) {
     return (
-      <Card>
+      <Card >
         <button
           onClick={onToggle}
           aria-expanded={false}

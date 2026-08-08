@@ -62,16 +62,16 @@ function AccountsOrdersInner() {
   }
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div>
+    <div className="space-y-5 rounded-none">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between rounded-none">
+        <div className="rounded-none">
           <h1 className="text-title-sm font-semibold text-ink">Sales Orders</h1>
           <p className="mt-0.5 text-body text-ink-muted">
             Manage billing queue and partial fulfillments
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 sm:w-auto">
+        <div className="grid grid-cols-2 gap-3 sm:w-auto rounded-none">
           <MiniStat label="Total Bills" value={totalBills} />
           <MiniStat label="Pending Bills" value={pendingBills} valueClassName="text-info" />
         </div>
@@ -133,7 +133,7 @@ function MiniStat({
   valueClassName?: string;
 }) {
   return (
-    <div className="min-w-[130px] rounded-card border border-line bg-surface px-4 py-3">
+    <div className="min-w-[130px] rounded-none border border-line bg-surface px-4 py-3">
       <p className="text-eyebrow font-semibold uppercase tracking-wide text-ink-muted">{label}</p>
       <p className={`mt-1 text-title font-semibold text-ink ${valueClassName ?? ""}`}>{value}</p>
     </div>
@@ -142,7 +142,7 @@ function MiniStat({
 
 export default function AccountsOrdersPage() {
   return (
-    <Suspense fallback={<Skeleton className="h-96 w-full rounded-card" />}>
+    <Suspense fallback={<Skeleton className="h-96 w-full rounded-none" />}>
       <AccountsOrdersInner />
     </Suspense>
   );

@@ -20,16 +20,18 @@ export default function AccountsLayout({ children }: { children: ReactNode }) {
 
   return (
     <RoleGuard allow="accounts">
-      <DesktopShell
-        tone="accounts"
-        brand="Accounts Dashboard"
-        items={ACCOUNTS_NAV}
-        searchAlign="start"
-        showRefresh
-        onRefresh={handleRefresh}
-      >
-        {children}
-      </DesktopShell>
-    </RoleGuard>
+  <div className="[--radius-card:0px] rounded-none">
+    <DesktopShell
+      tone="accounts"
+      brand="Accounts Dashboard"
+      items={ACCOUNTS_NAV}
+      searchAlign="start"
+      showRefresh
+      onRefresh={handleRefresh}
+    >
+      {children}
+    </DesktopShell>
+  </div>
+</RoleGuard> 
   );
 }
