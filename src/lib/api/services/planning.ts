@@ -5,6 +5,7 @@ import type {
   VisitUpdate,
 } from "@/types/domain";
 import { USE_MOCK, delay, http } from "../http";
+import { mapVisitPlan, type ApiVisitPlan } from "../mappers";
 import { db } from "../mock/db";
 
 export interface SubmitPlanPayload {
@@ -32,7 +33,41 @@ const today = () => new Date().toISOString().slice(0, 10);
 
 export const planningService = {
   async dashboard(salesRepId: string): Promise<SalesDashboardSummary> {
-    if (!USE_MOCK) return http.get<SalesDashboardSummary>("/sales/dashboard", { salesRepId });
+    if (!USE_MOCK) {
+      const res = await http.get<{
+        date?: string;
+        dealersScheduled?: number;
+        orderPlanTotal?: number;
+        planProgress?: { planned?: number; total?: number; completed?: number };
+        upcomingActivity?: Array<{
+          dealerId?: string;
+          _id?: string;
+          dealerName?: string;
+          name?: string;
+          purpose?: string;
+          title?: string;
+        }>;
+      }>("/reports/dashboard-summary");
+
+      const planned = res.planProgress?.planned ?? res.planProgress?.completed ?? 0;
+      const total = res.planProgress?.total ?? res.dealersScheduled ?? 0;
+
+      return {
+        repName: "there",
+        routeName: "Today's route",
+        date: (res.date ?? new Date().toISOString()).slice(0, 10),
+        dealersScheduled: res.dealersScheduled ?? 0,
+        orderPlanValue: res.orderPlanTotal ?? 0,
+        plannedCount: planned,
+        totalCount: total,
+        planSubmitted: planned > 0,
+        upcomingActivity: (res.upcomingActivity ?? []).map((a) => ({
+          dealerId: a.dealerId ?? a._id ?? "",
+          dealerName: a.dealerName ?? a.name ?? "Dealer",
+          purpose: a.purpose ?? a.title ?? "Scheduled visit",
+        })),
+      };
+    }
 
     const route = db.routes.find((r) => r.salesRepId === salesRepId) ?? db.routes[0];
     const dealerIds = route?.dealerIds ?? [];
@@ -58,8 +93,18 @@ export const planningService = {
   },
 
   async listPlans(salesRepId: string, date = today()): Promise<VisitPlanWithUpdate[]> {
-    if (!USE_MOCK)
-      return http.get<VisitPlanWithUpdate[]>("/visit-plans", { salesRepId, date });
+    if (!USE_MOCK) {
+      const res = await http.get<{ items?: ApiVisitPlan[] }>("/visit-plans", {
+        salesRepId,
+        visitDate: date,
+        limit: 100,
+      });
+      return (res.items ?? []).map((raw) => ({
+        ...mapVisitPlan(raw),
+        dealer: { id: raw.dealerId, name: raw.dealerName ?? "Dealer" },
+        notes: raw.remarks,
+      }));
+    }
 
     const route = db.routes.find((r) => r.salesRepId === salesRepId) ?? db.routes[0];
     const dealerIds = route?.dealerIds ?? [];
@@ -107,7 +152,20 @@ export const planningService = {
   },
 
   async submitPlan(payload: SubmitPlanPayload): Promise<VisitPlan> {
-    if (!USE_MOCK) return http.post<VisitPlan>("/visit-plans", payload);
+    if (!USE_MOCK) {
+      const created = await http.post<ApiVisitPlan>("/visit-plans", {
+        dealerId: payload.dealerId,
+        visitDate: payload.plannedDate,
+        plannedAmount: payload.paymentPlanValue,
+        orderPlanAmount: payload.orderPlanValue,
+        hasServiceIssue: payload.hasServiceIssue,
+        serviceIssueNote: payload.serviceIssueNote,
+        remarks: payload.remarks,
+      });
+      // Creating and submitting are separate calls — "SUBMIT PLAN" does both
+      const submitted = await http.post<ApiVisitPlan>(`/visit-plans/${created._id}/submit`);
+      return mapVisitPlan(submitted ?? created);
+    }
 
     const now = new Date().toISOString();
     const plan: VisitPlan = {
@@ -139,8 +197,37 @@ export const planningService = {
   },
 
   async submitUpdate(payload: SubmitUpdatePayload): Promise<VisitUpdate> {
-    if (!USE_MOCK)
-      return http.post<VisitUpdate>(`/visit-plans/${payload.visitPlanId}/update`, payload);
+    if (!USE_MOCK) {
+      const raw = await http.post<{
+        _id: string;
+        visitPlanId: string;
+        dealerId: string;
+        salesRepId: string;
+        collectedAmount?: number;
+        hasServiceIssue?: boolean;
+        remarks?: string;
+        createdAt?: string;
+      }>("/visit-updates", {
+        visitPlanId: payload.visitPlanId,
+        collectedAmount: payload.actualCollectionAmount,
+        hasServiceIssue: payload.serviceCompleted,
+        serviceIssueNote: payload.serviceNote,
+        remarks: payload.remarks,
+      });
+
+      return {
+        id: raw._id,
+        visitPlanId: raw.visitPlanId,
+        dealerId: raw.dealerId,
+        salesRepId: raw.salesRepId,
+        visited: true,
+        actualCollectionAmount: raw.collectedAmount,
+        serviceCompleted: raw.hasServiceIssue ?? false,
+        orderPlaced: payload.actualOrderValue > 0,
+        notes: raw.remarks,
+        submittedAt: raw.createdAt ?? new Date().toISOString(),
+      };
+    }
 
     const plan = db.visitPlans.find((p) => p.id === payload.visitPlanId);
     const update: VisitUpdate = {

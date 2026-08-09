@@ -51,8 +51,8 @@ export function OrderFilterBar({
   return (
     <div className="rounded-card border border-line bg-surface p-4">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-[repeat(3,minmax(0,200px))_auto_auto] lg:items-end">
-        <div>
-          <label htmlFor="filter-date" className="mb-1.5 block text-body text-ink-muted">
+        <div className="rounded-none">
+          <label htmlFor="filter-date" className="mb-1.5 block text-body text-ink-muted rounded-none">
             Date
           </label>
           <input
@@ -60,7 +60,7 @@ export function OrderFilterBar({
             type="date"
             value={value.date}
             onChange={(e) => onChange({ ...value, date: e.target.value })}
-            className="h-10 w-full rounded-field border border-line bg-surface px-3 text-body text-ink outline-none focus:ring-2 focus:ring-ink focus:ring-offset-1"
+            className="h-10 w-full rounded-none border border-line bg-surface px-3 text-body text-ink outline-none focus:ring-2 focus:ring-ink focus:ring-offset-1"
           />
         </div>
 
@@ -73,11 +73,12 @@ export function OrderFilterBar({
             options={[{ label: "All Reps", value: "" }, ...reps]}
             value={value.salesRepId}
             onChange={(e) => onChange({ ...value, salesRepId: e.target.value })}
+            className="rounded-none"
           />
         </div>
 
         <div>
-          <label htmlFor="filter-status" className="mb-1.5 block text-body text-ink-muted">
+          <label htmlFor="filter-status" className="mb-1.5 block text-body text-ink-muted rounded-none">
             Status
           </label>
           <Select
@@ -85,10 +86,11 @@ export function OrderFilterBar({
             options={STATUS_OPTIONS}
             value={value.status}
             onChange={(e) => onChange({ ...value, status: e.target.value })}
+            className="rounded-none"
           />
         </div>
 
-        <Button onClick={onApply} loading={applying} className="text-white">
+        <Button onClick={onApply} loading={applying} className="text-white rounded-none">
           <SlidersHorizontal className="h-4 w-4" aria-hidden />
           Apply Filters
         </Button>
@@ -100,7 +102,7 @@ export function OrderFilterBar({
             </Button>
           )}
           {onExport && (
-            <Button variant="secondary" onClick={onExport} className="text-white">
+            <Button variant="secondary" onClick={onExport} className="text-black bg-white rounded-none">
               Export
             </Button>
           )}

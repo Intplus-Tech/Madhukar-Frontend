@@ -7,6 +7,7 @@ export { teamService } from "./services/team";
 export { notificationService } from "./services/notifications";
 export { USE_MOCK, API_BASE_URL, ApiRequestError, tokenStore } from "./http";
 
-export type { LoginPayload, LoginResult } from "./services/auth";
+export type { LoginPayload, RegisterPayload, LoginResult } from "./services/auth";
+export { PASSWORD_RULES, validatePassword, validateEmail } from "./services/auth";
 export type { SubmitPlanPayload, SubmitUpdatePayload } from "./services/planning";
 export type { CreateOrderPayload, BillOrderPayload, SendFeedbackPayload } from "./services/orders";

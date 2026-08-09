@@ -1,14 +1,16 @@
 /**
  * The single place the app talks to the network.
  *
- * While NEXT_PUBLIC_USE_MOCK_API is "true", services short-circuit to the
- * mock layer and this file is never called. When the swagger lands, flip the
- * env var and fill in `API_BASE_URL` — no component changes required.
+ * Backend contract (Madhukar Doc API, OpenAPI 3.0):
+ *   base URL   https://madhukar-backend.onrender.com/api/v1
+ *   success    { ok: true, data: ... }
+ *   error      { ok: false, message, statusCode, timestamp, path, method }
+ *   auth       Authorization: Bearer <JWT>, refreshed via /auth/refresh-token
  */
 
 export const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_API !== "false";
 export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api";
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://madhukar-backend.onrender.com/api/v1";
 
 export class ApiRequestError extends Error {
   constructor(
@@ -22,29 +24,33 @@ export class ApiRequestError extends Error {
 }
 
 const TOKEN_KEY = "lakshya72.token";
+const REFRESH_KEY = "lakshya72.refreshToken";
 
 export const tokenStore = {
   get(): string | null {
     if (typeof window === "undefined") return null;
     return window.localStorage.getItem(TOKEN_KEY);
   },
-  set(token: string) {
+  getRefresh(): string | null {
+    if (typeof window === "undefined") return null;
+    return window.localStorage.getItem(REFRESH_KEY);
+  },
+  set(token: string, refreshToken?: string) {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(TOKEN_KEY, token);
+    if (refreshToken) window.localStorage.setItem(REFRESH_KEY, refreshToken);
   },
   clear() {
     if (typeof window === "undefined") return;
     window.localStorage.removeItem(TOKEN_KEY);
+    window.localStorage.removeItem(REFRESH_KEY);
   },
 };
 
 type QueryValue = string | number | boolean | undefined | null | string[];
 
 function buildUrl(path: string, query?: Record<string, QueryValue>) {
-  const url = new URL(
-    path.startsWith("/") ? `${API_BASE_URL}${path}` : path,
-    API_BASE_URL,
-  );
+  const url = new URL(`${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`);
   if (query) {
     for (const [key, value] of Object.entries(query)) {
       if (value === undefined || value === null || value === "") continue;
@@ -58,10 +64,45 @@ function buildUrl(path: string, query?: Record<string, QueryValue>) {
 interface RequestOptions extends Omit<RequestInit, "body"> {
   query?: Record<string, QueryValue>;
   body?: unknown;
+  /** Internal: prevents an infinite refresh loop. */
+  _retried?: boolean;
+}
+
+/**
+ * Refresh is shared: if several requests 401 at once they await one refresh
+ * rather than each firing their own and invalidating the others' tokens.
+ */
+let refreshInFlight: Promise<boolean> | null = null;
+
+async function refreshAccessToken(): Promise<boolean> {
+  const refreshToken = tokenStore.getRefresh();
+  if (!refreshToken) return false;
+
+  refreshInFlight ??= (async () => {
+    try {
+      const res = await fetch(buildUrl("/auth/refresh-token"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refreshToken }),
+      });
+      if (!res.ok) return false;
+      const payload = await res.json();
+      const data = payload?.data ?? payload;
+      if (!data?.token) return false;
+      tokenStore.set(data.token, data.refreshToken);
+      return true;
+    } catch {
+      return false;
+    } finally {
+      refreshInFlight = null;
+    }
+  })();
+
+  return refreshInFlight;
 }
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { query, body, headers, ...rest } = options;
+  const { query, body, headers, _retried, ...rest } = options;
   const token = tokenStore.get();
 
   const response = await fetch(buildUrl(path, query), {
@@ -74,20 +115,26 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     body: body === undefined ? undefined : JSON.stringify(body),
   });
 
+  // Expired access token — refresh once, then replay the original request
+  if (response.status === 401 && !_retried && tokenStore.getRefresh()) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) return request<T>(path, { ...options, _retried: true });
+    tokenStore.clear();
+  }
+
   if (response.status === 204) return undefined as T;
 
   const payload = await response.json().catch(() => null);
 
-  if (!response.ok) {
+  if (!response.ok || payload?.ok === false) {
     throw new ApiRequestError(
       payload?.message ?? `Request failed (${response.status})`,
-      response.status,
+      payload?.statusCode ?? response.status,
       payload?.errors,
     );
   }
 
-  // CONFIRM: backend may return the resource directly rather than
-  // wrapping it in { success, data }. Unwrap defensively for now.
+  // Success envelope is { ok: true, data: ... }
   return (payload && typeof payload === "object" && "data" in payload
     ? payload.data
     : payload) as T;
@@ -96,12 +143,9 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 export const http = {
   get: <T>(path: string, query?: Record<string, QueryValue>) =>
     request<T>(path, { method: "GET", query }),
-  post: <T>(path: string, body?: unknown) =>
-    request<T>(path, { method: "POST", body }),
-  patch: <T>(path: string, body?: unknown) =>
-    request<T>(path, { method: "PATCH", body }),
-  put: <T>(path: string, body?: unknown) =>
-    request<T>(path, { method: "PUT", body }),
+  post: <T>(path: string, body?: unknown) => request<T>(path, { method: "POST", body }),
+  patch: <T>(path: string, body?: unknown) => request<T>(path, { method: "PATCH", body }),
+  put: <T>(path: string, body?: unknown) => request<T>(path, { method: "PUT", body }),
   delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
 };
 

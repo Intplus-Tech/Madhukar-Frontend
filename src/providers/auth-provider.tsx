@@ -9,7 +9,7 @@ import type { User } from "@/types/domain";
 interface AuthContextValue {
   user: User | null;
   isLoading: boolean;
-  login: (fullName: string, email: string) => Promise<User>;
+  login: (email: string, password: string) => Promise<User>;
   logout: () => Promise<void>;
 }
 
@@ -34,8 +34,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false);
   }, []);
 
-  const login = useCallback(async (fullName: string, email: string) => {
-    const { user: next } = await authService.login({ fullName, email });
+  const login = useCallback(async (email: string, password: string) => {
+    const { user: next } = await authService.login({ email, password });
     window.localStorage.setItem(USER_KEY, JSON.stringify(next));
     setUser(next);
     return next;

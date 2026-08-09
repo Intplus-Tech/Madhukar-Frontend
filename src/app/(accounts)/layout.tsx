@@ -20,7 +20,7 @@ export default function AccountsLayout({ children }: { children: ReactNode }) {
 
   return (
     <RoleGuard allow="accounts">
-  <div className="[--radius-card:0px] rounded-none">
+  <div className="[--radius-card:0px] ">
     <DesktopShell
       tone="accounts"
       brand="Accounts Dashboard"

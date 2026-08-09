@@ -7,6 +7,11 @@ import type {
   SalesOrderFilters,
 } from "@/types/domain";
 import { USE_MOCK, delay, http } from "../http";
+import {
+  mapSalesOrder,
+  mapPaginated,
+  type ApiSalesOrder,
+} from "../mappers";
 import { db } from "../mock/db";
 
 export interface CreateOrderPayload {
@@ -29,6 +34,8 @@ export interface SendFeedbackPayload {
   fromUserId: string;
   fromRole: "accounts" | "admin";
   toRoles: Array<"sales" | "accounts">;
+  /** Real API takes explicit user IDs; the mock derives them from roles. */
+  recipientIds?: string[];
 }
 
 export const orderService = {
@@ -37,18 +44,22 @@ export const orderService = {
     page = 1,
     pageSize = 15,
   ): Promise<Paginated<SalesOrder>> {
-    if (!USE_MOCK)
-      return http.get<Paginated<SalesOrder>>("/sales-orders", {
-        status: filters.status,
-        salesRepId: filters.salesRepId,
-        dealerId: filters.dealerId,
-        priority: filters.priority,
-        search: filters.search,
-        from: filters.dateRange?.from,
-        to: filters.dateRange?.to,
-        page,
-        pageSize,
-      });
+    if (!USE_MOCK) {
+      const res = await http.get<{ items?: ApiSalesOrder[] } & Record<string, unknown>>(
+        "/sales-orders",
+        {
+          status: Array.isArray(filters.status) ? filters.status[0] : filters.status,
+          salesRepId: filters.salesRepId,
+          dealerId: filters.dealerId,
+          search: filters.search,
+          startDate: filters.dateRange?.from,
+          endDate: filters.dateRange?.to,
+          page,
+          limit: pageSize,
+        },
+      );
+      return mapPaginated(res as never, mapSalesOrder);
+    }
 
     const statuses = filters.status
       ? Array.isArray(filters.status)
@@ -87,7 +98,30 @@ export const orderService = {
   },
 
   async getById(id: string): Promise<SalesOrderDetail | null> {
-    if (!USE_MOCK) return http.get<SalesOrderDetail>(`/sales-orders/${id}`);
+    if (!USE_MOCK) {
+      const raw = await http.get<ApiSalesOrder>(`/sales-orders/${id}`);
+      const order = mapSalesOrder(raw);
+      return {
+        ...order,
+        dealer: {
+          id: raw.dealerId,
+          name: raw.dealerName ?? "Unknown dealer",
+          salesRepId: raw.salesRepId,
+          createdAt: order.createdAt,
+        },
+        salesRep: { id: raw.salesRepId, name: raw.salesRepName ?? "Unassigned" },
+        feedback: (raw.feedback ?? []).map((f, i) => ({
+          id: `${raw._id}-fb${i}`,
+          salesOrderId: raw._id,
+          message: f.message,
+          fromUserId: f.sentBy ?? "",
+          fromRole: "accounts" as const,
+          toUserIds: f.recipientIds ?? [],
+          toRoles: ["sales" as const],
+          createdAt: f.sentAt ?? order.createdAt,
+        })),
+      };
+    }
 
     const order = db.salesOrders.find((o) => o.id === id);
     if (!order) return delay(null);
@@ -103,7 +137,14 @@ export const orderService = {
   },
 
   async create(payload: CreateOrderPayload): Promise<SalesOrder> {
-    if (!USE_MOCK) return http.post<SalesOrder>("/sales-orders", payload);
+    if (!USE_MOCK) {
+      const raw = await http.post<ApiSalesOrder>("/sales-orders", {
+        dealerId: payload.dealerId,
+        items: payload.items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+        remarks: payload.notes,
+      });
+      return mapSalesOrder(raw);
+    }
 
     const items = payload.items.map((line, i) => {
       const p = db.products.find((x) => x.id === line.productId)!;
@@ -157,8 +198,22 @@ export const orderService = {
 
   /** Accounts confirms billing. All items ticked → completed. */
   async confirmBilling(payload: BillOrderPayload): Promise<SalesOrder> {
-    if (!USE_MOCK)
-      return http.post<SalesOrder>(`/sales-orders/${payload.orderId}/confirm`, payload);
+    if (!USE_MOCK) {
+      // Tick the checklist, then complete the order if everything was billed
+      const raw = await http.patch<ApiSalesOrder>(
+        `/sales-orders/${payload.orderId}/billing`,
+        { itemIds: payload.billedItemIds, billingStatus: "billed", remarks: payload.note },
+      );
+      const order = mapSalesOrder(raw);
+      if (order.items.every((li) => li.isBilled)) {
+        const completed = await http.patch<ApiSalesOrder>(
+          `/sales-orders/${payload.orderId}/status`,
+          { status: "completed" },
+        );
+        return mapSalesOrder(completed);
+      }
+      return order;
+    }
 
     const order = db.salesOrders.find((o) => o.id === payload.orderId);
     if (!order) throw new Error("Order not found");
@@ -195,8 +250,23 @@ export const orderService = {
 
   /** Accounts or admin sends the order back with a reason. */
   async sendFeedback(payload: SendFeedbackPayload): Promise<Feedback> {
-    if (!USE_MOCK)
-      return http.post<Feedback>(`/sales-orders/${payload.orderId}/feedback`, payload);
+    if (!USE_MOCK) {
+      await http.post(`/sales-orders/${payload.orderId}/feedback`, {
+        message: payload.message,
+        recipientIds: payload.recipientIds ?? [],
+      });
+      await http.patch(`/sales-orders/${payload.orderId}/status`, { status: "rejected" });
+      return {
+        id: `${payload.orderId}-fb`,
+        salesOrderId: payload.orderId,
+        message: payload.message,
+        fromUserId: payload.fromUserId,
+        fromRole: payload.fromRole,
+        toUserIds: payload.recipientIds ?? [],
+        toRoles: payload.toRoles,
+        createdAt: new Date().toISOString(),
+      };
+    }
 
     const order = db.salesOrders.find((o) => o.id === payload.orderId);
     if (!order) throw new Error("Order not found");

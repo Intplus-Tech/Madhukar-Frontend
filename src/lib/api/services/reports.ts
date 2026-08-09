@@ -7,12 +7,62 @@ import type {
   TeamPerformance,
 } from "@/types/domain";
 import { USE_MOCK, delay, http } from "../http";
+import { mapSalesOrder, type ApiSalesOrder } from "../mappers";
+
+function daysSince(iso: string) {
+  if (!iso) return 0;
+  const diff = Date.now() - new Date(iso).getTime();
+  return Math.max(0, Math.floor(diff / 86_400_000));
+}
 import { db } from "../mock/db";
 
 export const reportService = {
   /** Sales rep's own end-of-day report. */
   async salesReport(salesRepId: string): Promise<SalesReport> {
-    if (!USE_MOCK) return http.get<SalesReport>("/reports/sales", { salesRepId });
+    if (!USE_MOCK) {
+      const res = await http.get<{
+        overallPerformance?: { achievedPercent?: number; planned?: number; achieved?: number };
+        dealerVisitsCount?: number;
+        dealerVisits?: Array<{
+          dealerId?: string;
+          dealerName?: string;
+          location?: string;
+          address?: string;
+          plannedAmount?: number;
+          collectedAmount?: number | null;
+          orderPlaced?: boolean;
+          visited?: boolean;
+        }>;
+      }>("/reports/end-of-day");
+
+      const perf = res.overallPerformance ?? {};
+      const planned = perf.planned ?? 0;
+      const achieved = perf.achieved ?? 0;
+      const percent = perf.achievedPercent ?? (planned ? Math.round((achieved / planned) * 100) : 0);
+
+      return {
+        achievedPercent: percent,
+        plannedTotal: planned,
+        achievedTotal: achieved,
+        remainingGap: Math.max(0, planned - achieved),
+        performanceLabel: percent >= 90 ? "Above Avg" : percent >= 70 ? "On Track" : "Below Avg",
+        visits: (res.dealerVisits ?? []).map((v, i) => ({
+          id: v.dealerId ?? String(i),
+          dealerId: v.dealerId ?? "",
+          dealerName: v.dealerName ?? "Dealer",
+          address: v.location ?? v.address ?? "",
+          outcome: v.orderPlaced
+            ? "order_placed"
+            : (v.collectedAmount ?? 0) > 0
+              ? "payment_collected"
+              : v.visited
+                ? "visited"
+                : "not_visited",
+          plannedAmount: v.plannedAmount ?? 0,
+          achievedAmount: v.collectedAmount ?? null,
+        })),
+      };
+    }
 
     return delay({
       achievedPercent: 85,
@@ -62,7 +112,28 @@ export const reportService = {
   },
 
   async accountsOverview(): Promise<AccountsOverview> {
-    if (!USE_MOCK) return http.get<AccountsOverview>("/reports/accounts-overview");
+    if (!USE_MOCK) {
+      const summary = await http.get<Record<string, number>>("/reports/sales-summary");
+      const pending = await http.get<{ items?: Array<Record<string, unknown>> }>("/sales-orders", {
+        status: "pending",
+        limit: 10,
+      });
+
+      return {
+        ordersPendingBilling: summary.pending ?? 0,
+        pendingTrendPercent: 0,
+        blockedOrders: summary.rejected ?? 0,
+        totalBillsToday: summary.completed ?? 0,
+        needsAttention: (pending.items ?? []).slice(0, 6).map((o) => ({
+          id: String(o._id ?? ""),
+          orderNumber: String(o._id ?? "").slice(-8).toUpperCase(),
+          dealerName: String(o.dealerName ?? "Dealer"),
+          area: "—",
+          salesRepName: String(o.salesRepName ?? "—"),
+          pendingDays: daysSince(String(o.orderDate ?? o.createdAt ?? "")),
+        })),
+      };
+    }
 
     const pending = db.salesOrders.filter((o) => o.status === "pending");
     const blocked = db.salesOrders.filter((o) => o.status === "rejected");
@@ -84,11 +155,26 @@ export const reportService = {
   async adminDashboard(period: DashboardPeriod): Promise<
     AdminDashboardSummary & { chart: PlanVsAchievedPoint[] }
   > {
-    if (!USE_MOCK)
-      return http.get<AdminDashboardSummary & { chart: PlanVsAchievedPoint[] }>(
-        "/reports/admin-dashboard",
-        { period },
-      );
+    if (!USE_MOCK) {
+      const summary = await http.get<Record<string, number>>("/reports/sales-summary", { period });
+      const variance = await http.get<{
+        items?: Array<{ visitDate?: string; plannedAmount?: number; collectedAmount?: number }>;
+      }>("/reports/visit-variance", { period });
+      const latest = await http.get<{ items?: ApiSalesOrder[] }>("/sales-orders", { limit: 5 });
+
+      return {
+        totalPlanned: summary.planned ?? summary.total ?? 0,
+        totalBills: summary.completed ?? 0,
+        pendingBills: summary.pending ?? 0,
+        planVsAchieved: [],
+        latestOrders: (latest.items ?? []).map(mapSalesOrder),
+        chart: (variance.items ?? []).map((row) => ({
+          label: (row.visitDate ?? "").slice(5, 10),
+          plan: row.plannedAmount ?? 0,
+          actual: row.collectedAmount ?? 0,
+        })),
+      };
+    }
 
     const labels = ["23rd Oct", "24th Oct", "25th Oct", "26th Oct", "27th Oct", "28th Oct", "29th Oct", "30th Oct"];
 

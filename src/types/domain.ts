@@ -223,7 +223,7 @@ export interface SalesOrder {
 /** What the accounts "bill now" modal and admin detail view need. */
 export interface SalesOrderDetail extends SalesOrder {
   dealer: Dealer;
-  salesRep: Pick<User, 'id' | 'name' | 'phone' | 'email'>;
+  salesRep: Pick<User, 'id' | 'name'> & Partial<Pick<User, 'phone' | 'email'>>;
   feedback: Feedback[];
 }
 

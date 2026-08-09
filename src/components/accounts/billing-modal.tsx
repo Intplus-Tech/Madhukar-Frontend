@@ -141,7 +141,7 @@ export function BillingModal({
           ) : (
             <Button
               variant="danger"
-              className="flex-1 rounded-none"
+              className="flex-1 rounded-none text-white"
               disabled={noneBilled && !note.trim()}
               loading={sendFeedback.isPending}
               onClick={() => sendFeedback.mutate()}

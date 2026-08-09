@@ -1,6 +1,56 @@
 import type { TeamMember, TeamTab, UpdateTeamMemberPayload } from "@/types/domain";
 import { USE_MOCK, delay, http } from "../http";
+import { resolveRole, type ApiAuthUser } from "../mappers";
 import { db } from "../mock/db";
+
+/** GET /users returns { data: { users: [...] } }; field names vary by endpoint. */
+interface ApiTeamUser extends ApiAuthUser {
+  firstName?: string;
+  lastName?: string;
+}
+
+function displayName(raw: ApiTeamUser) {
+  if (raw.fullName) return raw.fullName;
+  const joined = [raw.firstName, raw.lastName].filter(Boolean).join(" ");
+  return joined || raw.name || raw.email.split("@")[0] || "User";
+}
+
+const POSITION_BY_ROLE = {
+  sales: "Sales Rep",
+  accounts: "Accountant",
+  admin: "Manager",
+} as const;
+
+function mapTeamMember(raw: ApiTeamUser): TeamMember {
+  const role = resolveRole(raw.role, raw.email);
+  const schedule = (raw.scheduleDays ?? []) as TeamMember["schedule"];
+
+  return {
+    id: raw._id ?? raw.id ?? "",
+    name: displayName(raw),
+    email: raw.email,
+    position: POSITION_BY_ROLE[role],
+    status: raw.isActive === false ? "inactive" : role === "sales" ? "on_field" : "active",
+    // The API tracks the target; achieved-so-far isn't exposed yet
+    plannedCount: 0,
+    plannedTotal: raw.visitQuotaTarget ?? 0,
+    routeId: raw.assignedRouteId ?? undefined,
+    routeName: raw.assignedRouteName ?? undefined,
+    schedule,
+    isFullTime: schedule.length === 0 || schedule.length >= 5,
+    permissions: {
+      allowOrderCreation: raw.permissions?.allowOrderCreationOnBehalfOfDealers ?? false,
+      allowDiscountOverride: raw.permissions?.allowManualDiscountOverrides ?? false,
+    },
+  };
+}
+
+async function fetchTeam(): Promise<TeamMember[]> {
+  const res = await http.get<{ users?: ApiTeamUser[]; items?: ApiTeamUser[] }>("/users", {
+    limit: 100,
+  });
+  return (res.users ?? res.items ?? []).map(mapTeamMember);
+}
 
 /** Seeded to match the Team & Access Management design. */
 const seedTeam: TeamMember[] = [
@@ -63,7 +113,12 @@ let teamState: TeamMember[] = structuredClone(seedTeam);
 
 export const teamService = {
   async list(tab: TeamTab = "all"): Promise<TeamMember[]> {
-    if (!USE_MOCK) return http.get<TeamMember[]>("/team", { tab });
+    if (!USE_MOCK) {
+      const all = await fetchTeam();
+      if (tab === "sales") return all.filter((m) => m.position === "Sales Rep");
+      if (tab === "accounts") return all.filter((m) => m.position === "Accountant");
+      return all;
+    }
 
     const rows =
       tab === "sales"
@@ -77,7 +132,14 @@ export const teamService = {
 
   /** Tab labels carry counts, so they need the unfiltered totals. */
   async counts(): Promise<Record<TeamTab, number>> {
-    if (!USE_MOCK) return http.get<Record<TeamTab, number>>("/team/counts");
+    if (!USE_MOCK) {
+      const all = await fetchTeam();
+      return {
+        all: all.length,
+        sales: all.filter((m) => m.position === "Sales Rep").length,
+        accounts: all.filter((m) => m.position === "Accountant").length,
+      };
+    }
     return delay({
       all: teamState.length,
       sales: teamState.filter((m) => m.position === "Sales Rep").length,
@@ -86,7 +148,27 @@ export const teamService = {
   },
 
   async update(payload: UpdateTeamMemberPayload): Promise<TeamMember> {
-    if (!USE_MOCK) return http.patch<TeamMember>(`/team/${payload.id}`, payload);
+    if (!USE_MOCK) {
+      /*
+        The API only exposes PATCH /users/profile/update, which edits the
+        *authenticated* user. There is no admin endpoint for editing another
+        person's route, quota, schedule or permissions yet, so saving here only
+        works when a manager edits their own row.
+        TODO: ask the backend for PATCH /users/{id}.
+      */
+      const updated = await http.patch<ApiTeamUser>("/users/profile/update", {
+        fullName: payload.name,
+        role: payload.position === "Sales Rep" ? "sales" : payload.position === "Accountant" ? "accounts" : "admin",
+        assignedRouteId: payload.routeId ?? null,
+        visitQuotaTarget: payload.plannedTotal,
+        scheduleDays: payload.schedule,
+        permissions: {
+          allowOrderCreationOnBehalfOfDealers: payload.permissions.allowOrderCreation,
+          allowManualDiscountOverrides: payload.permissions.allowDiscountOverride,
+        },
+      });
+      return mapTeamMember(updated);
+    }
 
     const index = teamState.findIndex((m) => m.id === payload.id);
     if (index === -1) throw new Error("Team member not found");
@@ -108,8 +190,12 @@ export const teamService = {
 
   /** Route options for the modal's Assigned Route select. */
   async routeOptions(): Promise<Array<{ label: string; value: string }>> {
-    if (!USE_MOCK)
-      return http.get<Array<{ label: string; value: string }>>("/routes/options");
+    if (!USE_MOCK) {
+      const res = await http.get<{ items?: Array<{ _id: string; name: string }> }>("/routes", {
+        limit: 100,
+      });
+      return (res.items ?? []).map((r) => ({ label: r.name, value: r._id }));
+    }
     return delay(db.routes.map((r) => ({ label: r.name, value: r.id })));
   },
 };
