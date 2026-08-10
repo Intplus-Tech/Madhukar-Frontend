@@ -52,9 +52,21 @@ export const planningService = {
       const planned = res.planProgress?.planned ?? res.planProgress?.completed ?? 0;
       const total = res.planProgress?.total ?? res.dealersScheduled ?? 0;
 
+      // The summary carries no route name, so read it from today's route
+      let routeName = "No route assigned";
+      try {
+        const route = await http.get<{ routeName?: string; scheduled?: boolean }>(
+          "/routes/me/today",
+        );
+        if (route?.routeName) routeName = route.routeName;
+      } catch {
+        // Leave the default — a missing route isn't an error worth surfacing here
+      }
+
       return {
-        repName: "there",
-        routeName: "Today's route",
+        // Filled in by the page from the signed-in user
+        repName: "",
+        routeName,
         date: (res.date ?? new Date().toISOString()).slice(0, 10),
         dealersScheduled: res.dealersScheduled ?? 0,
         orderPlanValue: res.orderPlanTotal ?? 0,

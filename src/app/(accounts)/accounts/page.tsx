@@ -4,15 +4,15 @@
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { AlertCircle, CalendarDays, CheckCircle2, Download } from "lucide-react";
-import { Button, CardSkeleton, ProgressBar, Table, TableWrap, Td, Th } from "@/components/ui";
-import { StatCard } from "@/components/shared";
+import { Button, CardSkeleton, EmptyRow, ProgressBar, Table, TableWrap, Td, Th } from "@/components/ui";
+import { QueryError, StatCard } from "@/components/shared";
 import { BillingModal, DockedReviewTab } from "@/components/accounts";
 import { useBillingQueue } from "@/hooks/use-billing-queue";
 import { reportService, orderService } from "@/lib/api";
 import { qk } from "@/lib/api/queryKeys";
 
 export default function AccountsDashboardPage() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: qk.accountsOverview,
     queryFn: () => reportService.accountsOverview(),
   });
@@ -39,16 +39,18 @@ export default function AccountsDashboardPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="secondary" className="rounded-none">
+          <Button variant="secondary">
             <CalendarDays className="h-4 w-4" aria-hidden />
             This Week
           </Button>
-          <Button onClick={() => void exportData()} className="rounded-none text-white">
+          <Button onClick={() => void exportData()} className="text-ink-inverse">
             <Download className="h-4 w-4" aria-hidden />
             Export Data
           </Button>
         </div>
       </div>
+
+      {isError && <QueryError error={error} onRetry={() => void refetch()} />}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {isLoading || !data ? (
@@ -79,7 +81,7 @@ export default function AccountsDashboardPage() {
               }
               trailing={<AlertCircle className="h-[18px] w-[18px] text-danger" aria-hidden />}
               footer={
-                <span className="inline-flex rounded bg-danger-deep px-2 py-1 text-meta font-medium text-ink-inverse rounded-none">
+                <span className="inline-flex rounded bg-danger-deep px-2 py-1 text-meta font-medium text-ink-inverse">
                   Action Required
                 </span>
               }
@@ -111,6 +113,13 @@ export default function AccountsDashboardPage() {
               </tr>
             </thead>
             <tbody>
+              {isLoading ? (
+                <EmptyRow colSpan={5}>Loading…</EmptyRow>
+              ) : (data?.needsAttention ?? []).length === 0 ? (
+                <EmptyRow colSpan={5}>
+                  Nothing waiting to be billed. Orders placed by reps land here.
+                </EmptyRow>
+              ) : null}
               {(data?.needsAttention ?? []).map((row, i) => (
                 <tr key={`${row.id}-${i}`} className="transition-colors hover:bg-surface-muted">
                   <Td className="font-medium">{row.orderNumber}</Td>
@@ -125,7 +134,7 @@ export default function AccountsDashboardPage() {
                     </span>
                   </Td>
                   <Td className="text-right">
-                    <Button size="sm" onClick={() => billing.openAt(row.id)} className="text-white rounded-none">
+                    <Button size="sm" onClick={() => billing.openAt(row.id)}>
                       Bill Now
                     </Button>
                   </Td>

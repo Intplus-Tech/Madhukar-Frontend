@@ -13,6 +13,7 @@ import { cn, formatCurrency, formatLongDate, formatWeekday, greetingFor } from "
 
 export default function SalesDashboardPage() {
   const { user } = useAuth();
+  const firstName = user?.name?.split(" ")[0] ?? "there";
   const { data, isLoading } = useQuery({
     queryKey: qk.salesDashboard(user?.id ?? ""),
     queryFn: () => planningService.dashboard(user!.id),
@@ -33,7 +34,7 @@ export default function SalesDashboardPage() {
                 {formatWeekday(data.date)} — {data.routeName}
               </p>
               <h2 className="mt-1 text-[30px] font-bold leading-tight tracking-[-0.02em] text-ink">
-                {greetingFor()}, {data.repName}!
+                {greetingFor()}, {data.repName || firstName}!
               </h2>
               <p className="mt-1 text-body-lg text-ink-muted">{formatLongDate(data.date)}</p>
             </section>
@@ -92,15 +93,26 @@ export default function SalesDashboardPage() {
 
             <section>
               <h3 className="mb-2.5 text-title-sm font-semibold text-ink">Upcoming Activity</h3>
-              <div className="space-y-3">
-                {data.upcomingActivity.map((activity) => (
-                  <ActivityRow
-                    key={activity.dealerId}
-                    name={activity.dealerName}
-                    purpose={activity.purpose}
-                  />
-                ))}
-              </div>
+              {data.upcomingActivity.length === 0 ? (
+                <Card className="px-4 py-6 text-center">
+                  <p className="text-body text-ink-muted">
+                    No dealers scheduled for today.
+                  </p>
+                  <p className="mt-1 text-meta text-ink-faint">
+                    Your route needs to be assigned before you can plan visits.
+                  </p>
+                </Card>
+              ) : (
+                <div className="space-y-3">
+                  {data.upcomingActivity.map((activity) => (
+                    <ActivityRow
+                      key={activity.dealerId}
+                      name={activity.dealerName}
+                      purpose={activity.purpose}
+                    />
+                  ))}
+                </div>
+              )}
             </section>
           </>
         )}

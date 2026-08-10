@@ -127,10 +127,38 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   const payload = await response.json().catch(() => null);
 
   if (!response.ok || payload?.ok === false) {
+    /*
+      Validation failures arrive as a generic message with the useful part in
+      `errors` / `details`. Fold those into the message so the UI can show what
+      actually went wrong rather than "Validation failed".
+    */
+    const detail = payload?.errors ?? payload?.details ?? payload?.error;
+    const detailText = Array.isArray(detail)
+      ? detail
+          .map((d: unknown) =>
+            typeof d === "string"
+              ? d
+              : [(d as { field?: string; path?: string }).field ??
+                   (d as { path?: string }).path,
+                 (d as { message?: string }).message]
+                  .filter(Boolean)
+                  .join(": "),
+          )
+          .filter(Boolean)
+          .join(" · ")
+      : typeof detail === "string"
+        ? detail
+        : detail && typeof detail === "object"
+          ? Object.entries(detail as Record<string, unknown>)
+              .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : String(v)}`)
+              .join(" · ")
+          : "";
+
+    const base = payload?.message ?? `Request failed (${response.status})`;
     throw new ApiRequestError(
-      payload?.message ?? `Request failed (${response.status})`,
+      detailText ? `${base} — ${detailText}` : base,
       payload?.statusCode ?? response.status,
-      payload?.errors,
+      detail,
     );
   }
 

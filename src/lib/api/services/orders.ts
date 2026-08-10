@@ -307,11 +307,36 @@ export const orderService = {
     return delay(entry);
   },
 
-  /** Server-driven export keeps the filter logic in one place. */
+  /**
+   * The API has no export endpoint, so the CSV is built client-side from the
+   * full filtered set — paging through results rather than exporting only the
+   * page currently on screen.
+   */
   async exportCsv(filters: SalesOrderFilters = {}): Promise<Blob> {
     if (!USE_MOCK) {
-      const res = await fetch("/api/export", { method: "POST", body: JSON.stringify(filters) });
-      return res.blob();
+      const PAGE = 100;
+      const MAX_PAGES = 50; // 5,000 rows — beyond that, ask for a real export endpoint
+      const rows: SalesOrder[] = [];
+
+      for (let page = 1; page <= MAX_PAGES; page += 1) {
+        const result = await orderService.list(filters, page, PAGE);
+        rows.push(...result.data);
+        if (page >= result.totalPages || result.data.length === 0) break;
+      }
+
+      const header = ["Order ID", "Dealer", "Representative", "Date", "Status", "Amount"];
+      const body = rows.map((o) => [
+        o.orderNumber,
+        o.dealerId,
+        o.salesRepId,
+        o.createdAt.slice(0, 10),
+        o.status,
+        String(o.totalAmount ?? 0),
+      ]);
+      const csvText = [header, ...body]
+        .map((r) => r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+        .join("\n");
+      return new Blob([csvText], { type: "text/csv;charset=utf-8;" });
     }
 
     const { data } = await orderService.list(filters, 1, 10_000);

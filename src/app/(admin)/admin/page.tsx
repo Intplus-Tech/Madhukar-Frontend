@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardSkeleton, Skeleton } from "@/components/ui";
-import { OrdersTable, StatCard } from "@/components/shared";
+import { OrdersTable, QueryError, StatCard } from "@/components/shared";
 import { PlanVsAchievedChart } from "@/components/admin";
+import { BillingModal, DockedReviewTab } from "@/components/accounts";
+import { useBillingQueue } from "@/hooks/use-billing-queue";
 import { reportService } from "@/lib/api";
 import { qk } from "@/lib/api/queryKeys";
 import { useLookup } from "@/hooks/use-lookup";
@@ -21,12 +22,16 @@ const PERIODS: Array<{ label: string; value: DashboardPeriod }> = [
 export default function AdminDashboardPage() {
   const [period, setPeriod] = useState<DashboardPeriod>("today");
   const { dealerName, repName } = useLookup();
-  const router = useRouter();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: qk.adminDashboard(period),
     queryFn: () => reportService.adminDashboard(period),
   });
+
+  const billing = useBillingQueue(
+    (data?.latestOrders ?? []).map((o) => o.id),
+    (id) => data?.latestOrders.find((o) => o.id === id)?.orderNumber ?? id,
+  );
 
   return (
     <div className="space-y-6">
@@ -62,14 +67,16 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
+      {isError && <QueryError error={error} onRetry={() => void refetch()} />}
+
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {isLoading || !data ? (
+        {isLoading ? (
           <>
             <CardSkeleton />
             <CardSkeleton />
             <CardSkeleton />
           </>
-        ) : (
+        ) : !data ? null : (
           <>
             <StatCard label="Planned" value={data.totalPlanned} />
             <StatCard label="Total Bills" value={data.totalBills} />
@@ -88,8 +95,12 @@ export default function AdminDashboardPage() {
         </div>
 
         <div className="mt-4">
-          {isLoading || !data ? (
+          {isLoading ? (
             <Skeleton className="h-[320px] w-full" />
+          ) : !data?.chart.length ? (
+            <p className="py-24 text-center text-body text-ink-muted">
+              No plan or order activity in this period yet.
+            </p>
           ) : (
             <PlanVsAchievedChart data={data.chart} />
           )}
@@ -101,8 +112,21 @@ export default function AdminDashboardPage() {
         loading={isLoading}
         dealerName={dealerName}
         repName={repName}
-        onAction={(order) => router.push(`/admin/orders/${order.id}`)}
+        onAction={(order) => billing.openAt(order.id)}
       />
+      <BillingModal
+        orderId={billing.activeId}
+        open={billing.isOpen}
+        onClose={billing.close}
+        onMinimise={billing.minimise}
+        onAdvance={billing.advance}
+        queuePosition={billing.position}
+        actorRole="admin"
+      />
+
+      {billing.isDocked && billing.activeId && (
+        <DockedReviewTab label={billing.activeLabel ?? "order"} onRestore={billing.restore} />
+      )}
     </div>
   );
 }

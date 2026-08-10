@@ -7,6 +7,8 @@ import { db } from "../mock/db";
 interface ApiTeamUser extends ApiAuthUser {
   firstName?: string;
   lastName?: string;
+  /** Visit plans this user has actually submitted — the "74" in "74/200". */
+  submittedVisitPlanCount?: number;
 }
 
 function displayName(raw: ApiTeamUser) {
@@ -31,8 +33,7 @@ function mapTeamMember(raw: ApiTeamUser): TeamMember {
     email: raw.email,
     position: POSITION_BY_ROLE[role],
     status: raw.isActive === false ? "inactive" : role === "sales" ? "on_field" : "active",
-    // The API tracks the target; achieved-so-far isn't exposed yet
-    plannedCount: 0,
+    plannedCount: raw.submittedVisitPlanCount ?? 0,
     plannedTotal: raw.visitQuotaTarget ?? 0,
     routeId: raw.assignedRouteId ?? undefined,
     routeName: raw.assignedRouteName ?? undefined,
@@ -46,10 +47,18 @@ function mapTeamMember(raw: ApiTeamUser): TeamMember {
 }
 
 async function fetchTeam(): Promise<TeamMember[]> {
-  const res = await http.get<{ users?: ApiTeamUser[]; items?: ApiTeamUser[] }>("/users", {
-    limit: 100,
-  });
-  return (res.users ?? res.items ?? []).map(mapTeamMember);
+  /*
+    GET /users nests its page inside the success envelope, so after http.ts
+    unwraps `data` the rows sit at `.data`. Older shapes are kept as fallbacks
+    in case the response settles differently.
+  */
+  const res = await http.get<{
+    data?: ApiTeamUser[];
+    users?: ApiTeamUser[];
+    items?: ApiTeamUser[];
+  }>("/users", { limit: 100 });
+
+  return (res.data ?? res.users ?? res.items ?? []).map(mapTeamMember);
 }
 
 /** Seeded to match the Team & Access Management design. */

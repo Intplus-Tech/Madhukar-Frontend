@@ -24,6 +24,7 @@ export function BillingModal({
   onMinimise,
   onAdvance,
   queuePosition,
+  actorRole = "accounts",
 }: {
   orderId: string | null;
   open: boolean;
@@ -34,6 +35,11 @@ export function BillingModal({
   onAdvance?: () => boolean;
   /** e.g. { index: 3, total: 84 } — shown in the header. */
   queuePosition?: { index: number; total: number };
+  /**
+   * Who is reviewing. Accounts feedback reaches the sales rep; admin feedback
+   * reaches the rep *and* the accounts team, per the walkthrough.
+   */
+  actorRole?: "accounts" | "admin";
 }) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -81,12 +87,16 @@ export function BillingModal({
           note.trim() ||
           "Some items could not be billed. Check stock availability and confirm with the dealer.",
         fromUserId: user!.id,
-        fromRole: "accounts",
-        toRoles: ["sales"],
+        fromRole: actorRole,
+        toRoles: actorRole === "admin" ? ["sales", "accounts"] : ["sales"],
       }),
     onSuccess: () => {
       invalidate();
-      notify("Feedback sent to the sales rep");
+      notify(
+        actorRole === "admin"
+          ? "Feedback sent to sales and accounts"
+          : "Feedback sent to the sales rep",
+      );
       const advanced = onAdvance?.() ?? false;
       if (!advanced) onClose();
     },
@@ -126,13 +136,13 @@ export function BillingModal({
       title="Order Review & Billing"
       footer={
         <div className="flex items-center gap-3">
-          <Button variant="secondary" className="flex-1 rounded-none" onClick={onClose}>
+          <Button variant="secondary" className="flex-1" onClick={onClose}>
             Cancel
           </Button>
           {allBilled ? (
             <Button
               variant="success"
-              className="flex-1 rounded-none"
+              className="flex-1"
               loading={confirm.isPending}
               onClick={() => confirm.mutate()}
             >
@@ -141,7 +151,7 @@ export function BillingModal({
           ) : (
             <Button
               variant="danger"
-              className="flex-1 rounded-none text-white"
+              className="flex-1"
               disabled={noneBilled && !note.trim()}
               loading={sendFeedback.isPending}
               onClick={() => sendFeedback.mutate()}
@@ -154,18 +164,18 @@ export function BillingModal({
     >
       {isLoading || !order ? (
         <div className="space-y-4">
-          <Skeleton className="h-16 w-full rounded-none" />
-          <Skeleton className="h-40 w-full rounded-none" />
-          <Skeleton className="h-32 w-full rounded-none" />
+          <Skeleton className="h-16 w-full rounded-card" />
+          <Skeleton className="h-40 w-full rounded-card" />
+          <Skeleton className="h-32 w-full rounded-card" />
         </div>
       ) : (
         <div className="space-y-5">
-          <div className="rounded-none bg-surface-muted px-4 py-3">
+          <div className="rounded-card bg-surface-muted px-4 py-3">
             <p className="text-meta text-ink-muted">Account Rep</p>
             <p className="mt-0.5 text-body-lg font-semibold text-ink">{order.salesRep.name}</p>
           </div>
 
-          <section className="rounded-none border border-line p-4">
+          <section className="rounded-card border border-line p-4">
             <div className="flex items-start justify-between gap-3">
               <h3 className="text-body-lg font-semibold text-ink">Dealer Information</h3>
               {order.priority === "urgent" && (
@@ -173,6 +183,12 @@ export function BillingModal({
               )}
             </div>
 
+            {/*
+              The API's dealer record carries name, location and phone only —
+              no named contact, job title or separate billing address. Rather
+              than render empty labels, each block appears only when it has
+              something to show.
+            */}
             <div className="mt-4 grid gap-5 sm:grid-cols-2">
               <div>
                 <p className="text-eyebrow font-semibold uppercase tracking-wide text-ink-muted">
@@ -182,9 +198,18 @@ export function BillingModal({
                   <Avatar name={order.dealer.contactPerson ?? order.dealer.name} size="md" />
                   <div className="min-w-0">
                     <p className="truncate text-body font-semibold text-ink">
-                      {order.dealer.contactPerson ?? "—"}
+                      {order.dealer.contactPerson ?? order.dealer.name}
                     </p>
-                    <p className="text-meta text-ink-muted">Procurement Director</p>
+                    {order.dealer.phone ? (
+                      <a
+                        href={`tel:${order.dealer.phone}`}
+                        className="text-meta text-ink-muted underline-offset-4 hover:text-ink hover:underline"
+                      >
+                        {order.dealer.phone}
+                      </a>
+                    ) : (
+                      <p className="text-meta text-ink-faint">No contact on file</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -197,7 +222,7 @@ export function BillingModal({
                   {order.dealer.name}
                 </p>
                 <address className="mt-1 not-italic text-body text-ink-muted">
-                  {order.dealer.address}
+                  {order.dealer.address || "No address on file"}
                 </address>
               </div>
             </div>
@@ -208,7 +233,7 @@ export function BillingModal({
               Line items
             </h3>
 
-            <div className="mt-3 grid grid-cols-[1fr_auto_auto] items-center gap-x-4 border-b border-line pb-2 rounded-none">
+            <div className="mt-3 grid grid-cols-[1fr_auto_auto] items-center gap-x-4 border-b border-line pb-2">
               <span className="text-meta text-ink-muted">Item</span>
               <span className="text-meta text-ink-muted">Qty</span>
               <span className="text-meta text-ink-muted">Status</span>
@@ -220,7 +245,7 @@ export function BillingModal({
                 return (
                   <li
                     key={item.id}
-                    className="grid grid-cols-[1fr_auto_auto] items-center gap-x-4 rounded-none border border-line px-3.5 py-3"
+                    className="grid grid-cols-[1fr_auto_auto] items-center gap-x-4 rounded-field border border-line px-3.5 py-3"
                   >
                     <span className="min-w-0 truncate text-body text-ink">{item.productName}</span>
                     <span className="text-body tabular-nums text-ink">{item.quantity}</span>
@@ -254,10 +279,10 @@ export function BillingModal({
             </ul>
           </section>
 
-          <section className="rounded-none border border-line p-4 ">
+          <section className="rounded-card border border-line p-4">
             <label
               htmlFor="order-note"
-              className="text-eyebrow font-semibold uppercase tracking-wide text-ink rounded-none"
+              className="text-eyebrow font-semibold uppercase tracking-wide text-ink"
             >
               Order note
             </label>
@@ -267,7 +292,7 @@ export function BillingModal({
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="Add specific billing instructions..."
-              className="mt-2 bg-surface-muted rounded-none"
+              className="mt-2 bg-surface-muted"
             />
             {!allBilled && (
               <p className="mt-2 text-meta text-ink-muted">

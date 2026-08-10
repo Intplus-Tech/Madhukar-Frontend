@@ -50,6 +50,19 @@ export function validateEmail(value: string): string | null {
   return null;
 }
 
+/**
+ * The API's accepted role strings don't match the app's own vocabulary — it
+ * takes "sales" and "admin", but rejects "accounts". Everything crossing the
+ * wire goes through here so the correct spelling lives in one place.
+ *
+ * CONFIRM the accounts value with the backend and adjust this map only.
+ */
+const API_ROLE: Record<UserRole, string> = {
+  sales: "sales",
+  accounts: "account",
+  admin: "admin",
+};
+
 export const authService = {
   async login(payload: LoginPayload): Promise<LoginResult> {
     if (!USE_MOCK) {
@@ -95,7 +108,7 @@ export const authService = {
       await http.post<{ user: ApiAuthUser }>("/auth/register", {
         fullName: payload.fullName.trim(),
         email: payload.email.trim().toLowerCase(),
-        role: payload.role,
+        role: API_ROLE[payload.role],
         password: payload.password,
       });
       return { message: "Registration successful. Check your email to verify your account." };

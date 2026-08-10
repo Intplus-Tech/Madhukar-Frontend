@@ -38,9 +38,12 @@ export interface ApiAuthResponse {
 export interface ApiDealer {
   _id: string;
   name: string;
-  location?: string;
-  contactPhone?: string;
-  salesRepId?: string;
+  location?: string | null;
+  contactName?: string | null;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  billingAddress?: string | null;
+  salesRepId?: string | null;
   isActive?: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -93,9 +96,12 @@ export function mapDealer(raw: ApiDealer) {
   return {
     id: raw._id,
     name: raw.name,
-    address: raw.location,
-    city: raw.location,
-    phone: raw.contactPhone,
+    // billingAddress is the postal address; location is the area/territory
+    address: raw.billingAddress ?? raw.location ?? undefined,
+    city: raw.location ?? undefined,
+    contactPerson: raw.contactName ?? undefined,
+    email: raw.contactEmail ?? undefined,
+    phone: raw.contactPhone ?? undefined,
     salesRepId: raw.salesRepId ?? "",
     createdAt: raw.createdAt ?? new Date().toISOString(),
   };

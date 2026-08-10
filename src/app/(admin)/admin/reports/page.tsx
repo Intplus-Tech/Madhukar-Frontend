@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { BarChart3, Plus } from "lucide-react";
 import { Avatar, Button, EmptyRow, Table, TableSkeleton, TableWrap, Td, Th } from "@/components/ui";
-import { EditTeamMemberModal } from "@/components/admin";
+import { EditTeamMemberModal } from "@/components/admin/edit-team-member-modal";
+import { QueryError } from "@/components/shared";
 import { teamService } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { TeamMember, TeamMemberStatus, TeamTab, WeekDay } from "@/types/domain";
@@ -27,7 +28,7 @@ export default function AdminReportsPage() {
   const [tab, setTab] = useState<TeamTab>("all");
   const [editing, setEditing] = useState<TeamMember | null>(null);
 
-  const { data: members, isLoading } = useQuery({
+  const { data: members, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["team", tab],
     queryFn: () => teamService.list(tab),
   });
@@ -83,7 +84,9 @@ export default function AdminReportsPage() {
         })}
       </div>
 
-      {isLoading ? (
+      {isError ? (
+        <QueryError error={error} onRetry={() => void refetch()} />
+      ) : isLoading ? (
         <TableWrap>
           <TableSkeleton rows={4} cols={6} />
         </TableWrap>
