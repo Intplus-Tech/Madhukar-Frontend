@@ -9,6 +9,32 @@ import type {
 import { USE_MOCK, delay, http } from "../http";
 import { mapSalesOrder, type ApiSalesOrder } from "../mappers";
 
+interface VarianceRow {
+  visitDate?: string;
+  createdAt?: string;
+  plannedAmountSnapshot?: number;
+  plannedAmount?: number;
+  collectedAmount?: number;
+  variance?: number;
+}
+
+/** The chart's period tabs map onto the endpoint's dateFrom/dateTo. */
+function periodRange(period: DashboardPeriod) {
+  const now = new Date();
+  const to = now.toISOString().slice(0, 10);
+  const from = new Date(now);
+
+  if (period === "wtd") from.setDate(now.getDate() - now.getDay());
+  else if (period === "mtd") from.setDate(1);
+
+  return { dateFrom: from.toISOString().slice(0, 10), dateTo: to };
+}
+
+function formatChartDate(iso?: string) {
+  if (!iso) return "";
+  return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
+
 function daysSince(iso: string) {
   if (!iso) return 0;
   const diff = Date.now() - new Date(iso).getTime();
@@ -202,12 +228,17 @@ export const reportService = {
         http
           .get<{ data?: ApiSalesOrder[]; items?: ApiSalesOrder[] }>("/sales-orders", { limit: 5 })
           .catch(() => ({ data: [] as ApiSalesOrder[], items: [] as ApiSalesOrder[] })),
+        /*
+          Rows come from the VisitUpdate collection and carry
+          plannedAmountSnapshot rather than plannedAmount. The endpoint takes
+          dateFrom/dateTo, not a period keyword.
+        */
         http
           .get<{
-            data?: Array<{ visitDate?: string; plannedAmount?: number; collectedAmount?: number }>;
-            items?: Array<{ visitDate?: string; plannedAmount?: number; collectedAmount?: number }>;
-          }>("/reports/visit-variance", { period })
-          .catch(() => ({ data: [], items: [] })),
+            data?: VarianceRow[];
+            items?: VarianceRow[];
+          }>("/reports/visit-variance", { ...periodRange(period), limit: 30 })
+          .catch(() => ({ data: [] as VarianceRow[], items: [] as VarianceRow[] })),
       ]);
 
       const varianceRows = variance.data ?? variance.items ?? [];
@@ -219,8 +250,8 @@ export const reportService = {
         planVsAchieved: [],
         latestOrders: (latest.data ?? latest.items ?? []).map(mapSalesOrder),
         chart: varianceRows.map((row) => ({
-          label: (row.visitDate ?? "").slice(5, 10),
-          plan: row.plannedAmount ?? 0,
+          label: formatChartDate(row.visitDate ?? row.createdAt),
+          plan: row.plannedAmountSnapshot ?? row.plannedAmount ?? 0,
           actual: row.collectedAmount ?? 0,
         })),
       };
