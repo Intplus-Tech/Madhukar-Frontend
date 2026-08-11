@@ -80,20 +80,28 @@ export default function PlanningPage() {
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <EmptyState
-            title="No dealers match that search"
-            description="Try a different name or clear the search to see today's full route."
-          />
+          /* An empty list means "no route" far more often than "no search hit" */
+          query.trim() ? (
+            <EmptyState
+              title="No dealers match that search"
+              description="Try a different name, or clear the search to see today's full route."
+            />
+          ) : (
+            <EmptyState
+              title="No dealers on today's route"
+              description="Once a route is assigned to you, the dealers you're visiting today will appear here in order."
+            />
+          )
         ) : (
           <div className="space-y-3">
-            {filtered.map((row) => (
+            {filtered.map((row, index) => (
               <DealerPlanCard
-                key={row.dealerId}
+                key={`${row.dealerId || "row"}-${index}`}
                 row={row}
                 mode="plan"
-                expanded={expandedId === row.dealerId}
+                expanded={expandedId === String(index)}
                 onToggle={() =>
-                  setExpandedId((prev) => (prev === row.dealerId ? null : row.dealerId))
+                  setExpandedId((prev) => (prev === String(index) ? null : String(index)))
                 }
                 submitting={submitPlan.isPending}
                 onSubmit={(values) => submitPlan.mutate({ dealerId: row.dealerId, values })}

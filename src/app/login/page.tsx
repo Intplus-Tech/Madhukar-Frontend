@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState, type FormEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { LogIn } from "lucide-react";
 import { Button, FieldLabel, Input, useToast } from "@/components/ui";
@@ -11,10 +11,12 @@ import { ROLE_HOME } from "@/lib/constants";
 import { validateEmail } from "@/lib/api";
 import { ApiRequestError } from "@/lib/api";
 
-export default function LoginPage() {
+function LoginPageInner() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const searchParams = useSearchParams();
+  const expired = searchParams.get("expired") === "1";
   const [error, setError] = useState<string | null>(null);
 
   const { login } = useAuth();
@@ -60,6 +62,12 @@ export default function LoginPage() {
         </>
       }
     >
+      {expired && !error && (
+        <p className="mb-4 rounded-field bg-warning-soft px-3.5 py-2.5 text-meta text-warning-ink">
+          Your session expired. Please sign in again.
+        </p>
+      )}
+
       <form onSubmit={onSubmit} noValidate className="space-y-5">
         <div>
           <FieldLabel>Email ID</FieldLabel>
@@ -98,5 +106,13 @@ export default function LoginPage() {
         </Button>
       </form>
     </AuthShell>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageInner />
+    </Suspense>
   );
 }

@@ -43,13 +43,22 @@ function AccountsOrdersInner() {
     (id) => data?.data.find((o) => o.id === id)?.orderNumber ?? id,
   );
 
-  const totals = useQuery({
-    queryKey: qk.orders({}, 0),
-    queryFn: () => orderService.list({}, 1, 1000),
+  /*
+    The API rejects large page sizes, so the header counts come from two
+    single-row queries — the `total` in the pagination meta is the number we
+    want, not the rows themselves.
+  */
+  const completedTotal = useQuery({
+    queryKey: qk.orders({ status: "completed" }, 0),
+    queryFn: () => orderService.list({ status: "completed" }, 1, 1),
+  });
+  const pendingTotal = useQuery({
+    queryKey: qk.orders({ status: "pending" }, 0),
+    queryFn: () => orderService.list({ status: "pending" }, 1, 1),
   });
 
-  const totalBills = totals.data?.data.filter((o) => o.status === "completed").length ?? 0;
-  const pendingBills = totals.data?.data.filter((o) => o.status === "pending").length ?? 0;
+  const totalBills = completedTotal.data?.total ?? 0;
+  const pendingBills = pendingTotal.data?.total ?? 0;
 
   async function exportCsv() {
     const blob = await orderService.exportCsv(filters);
@@ -62,16 +71,16 @@ function AccountsOrdersInner() {
   }
 
   return (
-    <div className="space-y-5 rounded-none">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between rounded-none">
-        <div className="rounded-none">
+    <div className="space-y-5">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div>
           <h1 className="text-title-sm font-semibold text-ink">Sales Orders</h1>
           <p className="mt-0.5 text-body text-ink-muted">
             Manage billing queue and partial fulfillments
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 sm:w-auto rounded-none">
+        <div className="grid grid-cols-2 gap-3 sm:w-auto">
           <MiniStat label="Total Bills" value={totalBills} />
           <MiniStat label="Pending Bills" value={pendingBills} valueClassName="text-info" />
         </div>
@@ -133,7 +142,7 @@ function MiniStat({
   valueClassName?: string;
 }) {
   return (
-    <div className="min-w-[130px] rounded-none border border-line bg-surface px-4 py-3">
+    <div className="min-w-[130px] rounded-card border border-line bg-surface px-4 py-3">
       <p className="text-eyebrow font-semibold uppercase tracking-wide text-ink-muted">{label}</p>
       <p className={`mt-1 text-title font-semibold text-ink ${valueClassName ?? ""}`}>{value}</p>
     </div>
@@ -142,7 +151,7 @@ function MiniStat({
 
 export default function AccountsOrdersPage() {
   return (
-    <Suspense fallback={<Skeleton className="h-96 w-full rounded-none" />}>
+    <Suspense fallback={<Skeleton className="h-96 w-full rounded-card" />}>
       <AccountsOrdersInner />
     </Suspense>
   );

@@ -199,16 +199,28 @@ export const orderService = {
   /** Accounts confirms billing. All items ticked → completed. */
   async confirmBilling(payload: BillOrderPayload): Promise<SalesOrder> {
     if (!USE_MOCK) {
-      // Tick the checklist, then complete the order if everything was billed
+      /*
+        The API takes a per-item status list and recomputes the order status
+        itself (pending → partially_billed → billed). Every item is sent, not
+        just the ticked ones, so unticking works as well as ticking.
+      */
+      const current = await http.get<ApiSalesOrder>(`/sales-orders/${payload.orderId}`);
+      const items = (current.items ?? []).map((li) => ({
+        itemId: li._id,
+        billingStatus: payload.billedItemIds.includes(li._id ?? "")
+          ? ("billed" as const)
+          : ("pending" as const),
+      }));
+
       const raw = await http.patch<ApiSalesOrder>(
         `/sales-orders/${payload.orderId}/billing`,
-        { itemIds: payload.billedItemIds, billingStatus: "billed", remarks: payload.note },
+        { items },
       );
       const order = mapSalesOrder(raw);
       if (order.items.every((li) => li.isBilled)) {
         const completed = await http.patch<ApiSalesOrder>(
           `/sales-orders/${payload.orderId}/status`,
-          { status: "completed" },
+          { status: "completed", remarks: payload.note || undefined },
         );
         return mapSalesOrder(completed);
       }
@@ -251,18 +263,34 @@ export const orderService = {
   /** Accounts or admin sends the order back with a reason. */
   async sendFeedback(payload: SendFeedbackPayload): Promise<Feedback> {
     if (!USE_MOCK) {
+      /*
+        recipientIds must contain at least one id. If the caller didn't supply
+        one, fall back to the rep who placed the order — they're always the
+        person who needs to hear about it.
+      */
+      let recipients = payload.recipientIds ?? [];
+      if (recipients.length === 0) {
+        const order = await http.get<ApiSalesOrder>(`/sales-orders/${payload.orderId}`);
+        if (order?.salesRepId) recipients = [order.salesRepId];
+      }
+      if (recipients.length === 0) throw new Error("No recipient for this feedback.");
+
+      // Feedback is purely a message — the status change is a separate call
       await http.post(`/sales-orders/${payload.orderId}/feedback`, {
         message: payload.message,
-        recipientIds: payload.recipientIds ?? [],
+        recipientIds: recipients,
       });
-      await http.patch(`/sales-orders/${payload.orderId}/status`, { status: "rejected" });
+      await http.patch(`/sales-orders/${payload.orderId}/status`, {
+        status: "rejected",
+        remarks: payload.message.slice(0, 2000),
+      });
       return {
         id: `${payload.orderId}-fb`,
         salesOrderId: payload.orderId,
         message: payload.message,
         fromUserId: payload.fromUserId,
         fromRole: payload.fromRole,
-        toUserIds: payload.recipientIds ?? [],
+        toUserIds: recipients,
         toRoles: payload.toRoles,
         createdAt: new Date().toISOString(),
       };
@@ -314,7 +342,7 @@ export const orderService = {
    */
   async exportCsv(filters: SalesOrderFilters = {}): Promise<Blob> {
     if (!USE_MOCK) {
-      const PAGE = 100;
+      const PAGE = 50; // the API rejects large page sizes
       const MAX_PAGES = 50; // 5,000 rows — beyond that, ask for a real export endpoint
       const rows: SalesOrder[] = [];
 

@@ -89,6 +89,8 @@ export function BillingModal({
         fromUserId: user!.id,
         fromRole: actorRole,
         toRoles: actorRole === "admin" ? ["sales", "accounts"] : ["sales"],
+        // The rep who placed the order always hears about it
+        recipientIds: order?.salesRep.id ? [order.salesRep.id] : undefined,
       }),
     onSuccess: () => {
       invalidate();

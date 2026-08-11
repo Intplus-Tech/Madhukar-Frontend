@@ -39,14 +39,23 @@ export default function PlanningUpdatePage() {
       notify("Today's report submitted");
       setExpandedId(null);
     },
-    onError: () => notify("Couldn't submit the report. Try again.", "error"),
+    onError: (err) =>
+      notify(
+        err instanceof Error ? err.message : "Couldn't submit the report. Try again.",
+        "error",
+      ),
   });
 
   const filtered = useMemo(() => {
     if (!rows) return [];
+    /*
+      Only dealers with a real submitted plan can take an end-of-day report —
+      a draft has no plan id for the update to attach to.
+    */
+    const planned = rows.filter((r) => !r.id.startsWith("draft-"));
     const q = query.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter((r) => r.dealer.name.toLowerCase().includes(q));
+    if (!q) return planned;
+    return planned.filter((r) => r.dealer.name.toLowerCase().includes(q));
   }, [rows, query]);
 
   return (
@@ -65,19 +74,23 @@ export default function PlanningUpdatePage() {
           </div>
         ) : filtered.length === 0 ? (
           <EmptyState
-            title="Nothing to update"
-            description="Submit a plan first, then come back to record the day's results."
+            title={query.trim() ? "No dealers match that search" : "Nothing to update yet"}
+            description={
+              query.trim()
+                ? "Try a different name, or clear the search."
+                : "Submit today's plan first, then come back in the evening to record what actually happened."
+            }
           />
         ) : (
-          <div className="space-y-3 ">
-            {filtered.map((row) => (
+          <div className="space-y-3">
+            {filtered.map((row, index) => (
               <DealerPlanCard
-                key={row.dealerId}
+                key={`${row.dealerId || "row"}-${index}`}
                 row={row}
                 mode="update"
-                expanded={expandedId === row.dealerId}
+                expanded={expandedId === String(index)}
                 onToggle={() =>
-                  setExpandedId((prev) => (prev === row.dealerId ? null : row.dealerId))
+                  setExpandedId((prev) => (prev === String(index) ? null : String(index)))
                 }
                 submitting={submitUpdate.isPending}
                 onSubmit={(values) => submitUpdate.mutate({ visitPlanId: row.id, values })}

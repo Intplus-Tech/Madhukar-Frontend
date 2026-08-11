@@ -215,6 +215,9 @@ export interface SalesOrder {
   notes?: string;
 
   createdAt: ISODateTime;     // when the rep submitted
+  /** Denormalised by the API so tables don't need a second lookup. */
+  dealerName?: string;
+  salesRepName?: string;
   billedAt?: ISODateTime;
   billedById?: ID;            // accounts user
   confirmedAt?: ISODateTime;

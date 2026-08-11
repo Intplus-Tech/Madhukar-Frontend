@@ -104,9 +104,10 @@ export default function SalesDashboardPage() {
                 </Card>
               ) : (
                 <div className="space-y-3">
-                  {data.upcomingActivity.map((activity) => (
+                  {data.upcomingActivity.map((activity, index) => (
                     <ActivityRow
-                      key={activity.dealerId}
+                      // dealerId can be absent on some rows, so pair it with the index
+                      key={activity.dealerId || `activity-${index}`}
                       name={activity.dealerName}
                       purpose={activity.purpose}
                     />

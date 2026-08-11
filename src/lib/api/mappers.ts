@@ -112,7 +112,8 @@ export function mapPaginated<TRaw, TOut>(
   payload: { items?: TRaw[]; data?: TRaw[]; meta?: ApiPaginationMeta } & ApiPaginationMeta,
   mapItem: (raw: TRaw) => TOut,
 ) {
-  const rows = payload.items ?? payload.data ?? [];
+  // The API nests rows under `data`; `items` kept as a fallback
+  const rows = payload.data ?? payload.items ?? [];
   const meta = payload.meta ?? payload;
   const page = meta.page ?? 1;
   const pageSize = meta.limit ?? rows.length;
@@ -231,6 +232,8 @@ export function mapSalesOrder(raw: ApiSalesOrder): SalesOrder {
     status: mapOrderStatus(raw.status),
     totalAmount: raw.orderAmount ?? items.reduce((s, li) => s + (li.lineTotal ?? 0), 0),
     notes: raw.remarks,
+    dealerName: raw.dealerName,
+    salesRepName: raw.salesRepName,
     createdAt: raw.orderDate ?? raw.createdAt ?? new Date().toISOString(),
   };
 }

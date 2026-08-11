@@ -7,8 +7,11 @@ export const notificationService = {
   async list(_userId: string): Promise<Notification[]> {
     if (!USE_MOCK) {
       // Scoped to the authenticated user by the bearer token
-      const res = await http.get<{ items?: ApiNotification[] }>("/notifications", { limit: 50 });
-      return (res.items ?? []).map(mapNotification);
+      const res = await http.get<{ data?: ApiNotification[]; items?: ApiNotification[] }>(
+        "/notifications",
+        { limit: 50 },
+      );
+      return (res.data ?? res.items ?? []).map(mapNotification);
     }
     return delay(
       db.notifications

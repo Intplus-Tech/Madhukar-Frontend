@@ -81,7 +81,8 @@ export default function SalesReportPage() {
 
               <div className="space-y-3">
                 {data.visits.map((visit, index) => (
-                  <Card key={visit.id} className="p-4">
+                  // A dealer can appear more than once, so pair the id with position
+                  <Card key={`${visit.id || "visit"}-${index}`} className="p-4">
                     <div className="flex items-start gap-3">
                       <span
                         className={cn(

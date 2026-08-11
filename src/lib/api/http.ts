@@ -119,7 +119,17 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   if (response.status === 401 && !_retried && tokenStore.getRefresh()) {
     const refreshed = await refreshAccessToken();
     if (refreshed) return request<T>(path, { ...options, _retried: true });
+
+    /*
+      Refresh failed, so the session is genuinely over. Clear it and send the
+      user to sign in once — otherwise every in-flight query 401s in turn and
+      the screen fills with errors that all mean the same thing.
+    */
     tokenStore.clear();
+    if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+      window.localStorage.removeItem("lakshya72.user");
+      window.location.replace("/login?expired=1");
+    }
   }
 
   if (response.status === 204) return undefined as T;

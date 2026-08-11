@@ -47,7 +47,7 @@ export const reportService = {
         remainingGap: Math.max(0, planned - achieved),
         performanceLabel: percent >= 90 ? "Above Avg" : percent >= 70 ? "On Track" : "Below Avg",
         visits: (res.dealerVisits ?? []).map((v, i) => ({
-          id: v.dealerId ?? String(i),
+          id: `${v.dealerId ?? "visit"}-${i}`,
           dealerId: v.dealerId ?? "",
           dealerName: v.dealerName ?? "Dealer",
           address: v.location ?? v.address ?? "",
@@ -113,24 +113,45 @@ export const reportService = {
 
   async accountsOverview(): Promise<AccountsOverview> {
     if (!USE_MOCK) {
-      const summary = await http.get<Record<string, number>>("/reports/sales-summary");
-      const pending = await http.get<{ items?: Array<Record<string, unknown>> }>("/sales-orders", {
-        status: "pending",
-        limit: 10,
-      });
+      /*
+        /reports/sales-summary doesn't document its key names, so the counts
+        come from the orders endpoint instead — one row per status, reading the
+        `total` out of the pagination meta.
+      */
+      const countFor = async (status: string) => {
+        const res = await http.get<Record<string, unknown>>("/sales-orders", {
+          status,
+          page: 1,
+          limit: 1,
+        });
+        const meta = (res.meta ?? res) as { total?: number };
+        return meta.total ?? 0;
+      };
+
+      const [pendingCount, blockedCount, completedCount, pendingRows] = await Promise.all([
+        countFor("pending"),
+        countFor("rejected"),
+        countFor("completed"),
+        http.get<{ data?: ApiSalesOrder[]; items?: ApiSalesOrder[] }>("/sales-orders", {
+          status: "pending",
+          limit: 10,
+        }),
+      ]);
+
+      const rows = pendingRows.data ?? pendingRows.items ?? [];
 
       return {
-        ordersPendingBilling: summary.pending ?? 0,
+        ordersPendingBilling: pendingCount,
         pendingTrendPercent: 0,
-        blockedOrders: summary.rejected ?? 0,
-        totalBillsToday: summary.completed ?? 0,
-        needsAttention: (pending.items ?? []).slice(0, 6).map((o) => ({
-          id: String(o._id ?? ""),
-          orderNumber: String(o._id ?? "").slice(-8).toUpperCase(),
-          dealerName: String(o.dealerName ?? "Dealer"),
+        blockedOrders: blockedCount,
+        totalBillsToday: completedCount,
+        needsAttention: rows.slice(0, 6).map((o) => ({
+          id: o._id,
+          orderNumber: o._id.slice(-8).toUpperCase(),
+          dealerName: o.dealerName ?? "Dealer",
           area: "—",
-          salesRepName: String(o.salesRepName ?? "—"),
-          pendingDays: daysSince(String(o.orderDate ?? o.createdAt ?? "")),
+          salesRepName: o.salesRepName ?? "—",
+          pendingDays: daysSince(o.orderDate ?? o.createdAt ?? ""),
         })),
       };
     }
@@ -156,19 +177,48 @@ export const reportService = {
     AdminDashboardSummary & { chart: PlanVsAchievedPoint[] }
   > {
     if (!USE_MOCK) {
-      const summary = await http.get<Record<string, number>>("/reports/sales-summary", { period });
-      const variance = await http.get<{
-        items?: Array<{ visitDate?: string; plannedAmount?: number; collectedAmount?: number }>;
-      }>("/reports/visit-variance", { period });
-      const latest = await http.get<{ items?: ApiSalesOrder[] }>("/sales-orders", { limit: 5 });
+      /*
+        Same approach as the accounts overview: /reports/sales-summary doesn't
+        document its key names, so counts come from the orders endpoint's
+        pagination totals instead.
+      */
+      const countFor = async (status?: string) => {
+        const res = await http.get<Record<string, unknown>>("/sales-orders", {
+          status,
+          page: 1,
+          limit: 1,
+        });
+        const meta = (res.meta ?? res) as { total?: number };
+        return meta.total ?? 0;
+      };
+
+      const [completed, pending, planned, latest, variance] = await Promise.all([
+        countFor("completed"),
+        countFor("pending"),
+        http
+          .get<Record<string, unknown>>("/visit-plans", { page: 1, limit: 1 })
+          .then((r) => ((r.meta ?? r) as { total?: number }).total ?? 0)
+          .catch(() => 0),
+        http
+          .get<{ data?: ApiSalesOrder[]; items?: ApiSalesOrder[] }>("/sales-orders", { limit: 5 })
+          .catch(() => ({ data: [] as ApiSalesOrder[], items: [] as ApiSalesOrder[] })),
+        http
+          .get<{
+            data?: Array<{ visitDate?: string; plannedAmount?: number; collectedAmount?: number }>;
+            items?: Array<{ visitDate?: string; plannedAmount?: number; collectedAmount?: number }>;
+          }>("/reports/visit-variance", { period })
+          .catch(() => ({ data: [], items: [] })),
+      ]);
+
+      const varianceRows = variance.data ?? variance.items ?? [];
 
       return {
-        totalPlanned: summary.planned ?? summary.total ?? 0,
-        totalBills: summary.completed ?? 0,
-        pendingBills: summary.pending ?? 0,
+        totalPlanned: planned,
+        totalBills: completed,
+        pendingBills: pending,
         planVsAchieved: [],
-        latestOrders: (latest.items ?? []).map(mapSalesOrder),
-        chart: (variance.items ?? []).map((row) => ({
+        latestOrders: (latest.data ?? latest.items ?? []).map(mapSalesOrder),
+        chart: varianceRows.map((row) => ({
           label: (row.visitDate ?? "").slice(5, 10),
           plan: row.plannedAmount ?? 0,
           actual: row.collectedAmount ?? 0,

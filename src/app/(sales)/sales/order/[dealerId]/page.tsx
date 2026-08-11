@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Minus, Plus, Search, Store, Trash2, MapPin } from "lucide-react";
 import { BackHeader } from "@/components/layout";
-import { Button, Card, EmptyState, Input, Skeleton, useToast } from "@/components/ui";
-import { dealerService, orderService, productService } from "@/lib/api";
+import { Button, Card, Input, Skeleton, useToast } from "@/components/ui";
+import { ApiRequestError, dealerService, orderService, productService } from "@/lib/api";
 import { qk } from "@/lib/api/queryKeys";
 import { useAuth } from "@/providers/auth-provider";
 import { cn, formatCurrency } from "@/lib/utils";
@@ -34,9 +34,10 @@ export default function ComposeOrderPage({
   const [lines, setLines] = useState<Line[]>([]);
   const [priority, setPriority] = useState<OrderPriority>("medium");
 
-  const { data: dealer, isLoading } = useQuery({
+  const { data: dealer, isLoading, isError, error } = useQuery({
     queryKey: qk.dealer(dealerId),
     queryFn: () => dealerService.getById(dealerId),
+    retry: false,
   });
 
   const { data: products } = useQuery({
@@ -88,7 +89,22 @@ export default function ComposeOrderPage({
         {isLoading ? (
           <Skeleton className="h-24 w-full rounded-card" />
         ) : !dealer ? (
-          <EmptyState title="Dealer not found" description="Go back and pick a dealer to order for." />
+          /*
+            The order only needs the dealer id, which is already in the URL, so
+            a failed lookup shouldn't block the rep from placing it.
+          */
+          <Card className="p-4">
+            <p className="text-eyebrow font-semibold uppercase tracking-wide text-ink-muted">
+              Assigned dealer
+            </p>
+            <p className="mt-1 text-title-sm font-semibold text-ink">Selected dealer</p>
+            <p className="mt-1.5 text-meta text-danger">
+              {isError && error instanceof ApiRequestError
+                ? `Couldn't load details: ${error.message}`
+                : "Couldn't load this dealer's details."}{" "}
+              You can still place the order.
+            </p>
+          </Card>
         ) : (
           <Card className="p-4">
             <div className="flex items-start justify-between gap-3">
@@ -190,7 +206,7 @@ export default function ComposeOrderPage({
         {/* Priority */}
         <div>
           <p className="mb-1.5 text-body font-medium text-ink">Priority level</p>
-            <div
+          <div
             role="radiogroup"
             aria-label="Priority level"
             className="flex h-[50px] w-full items-stretch rounded-xl border border-segment-border bg-segment p-1"
@@ -206,7 +222,7 @@ export default function ComposeOrderPage({
                 role="radio"
                 aria-checked={priority === option.value}
                 onClick={() => setPriority(option.value)}
-                  className={cn(
+                className={cn(
                   "flex-1 rounded-lg text-body font-medium transition-colors",
                   priority === option.value
                     ? "bg-admin-sidebar text-ink-inverse shadow-card"
@@ -231,7 +247,7 @@ export default function ComposeOrderPage({
           disabled={lines.length === 0}
           loading={createOrder.isPending}
           onClick={() => createOrder.mutate()}
-          className="tracking-[0.06em] text-white rounded-none"
+          className="tracking-[0.06em]"
         >
           SUBMIT ISSUE
         </Button>
