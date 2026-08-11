@@ -7,6 +7,8 @@ import type {
   SalesOrderFilters,
 } from "@/types/domain";
 import { USE_MOCK, delay, http } from "../http";
+import { formatDate } from "@/lib/utils";
+import { ORDER_STATUS_LABEL } from "@/lib/constants";
 import {
   mapSalesOrder,
   mapPaginated,
@@ -352,13 +354,28 @@ export const orderService = {
         if (page >= result.totalPages || result.data.length === 0) break;
       }
 
-      const header = ["Order ID", "Dealer", "Representative", "Date", "Status", "Amount"];
+      const header = [
+        "Order ID",
+        "Dealer",
+        "Representative",
+        "Date",
+        "Status",
+        "Items",
+        "Amount",
+      ];
+
+      /*
+        Names come denormalised on each row, so the export shows what a person
+        would recognise rather than database ids. The date is written as a
+        readable string so spreadsheets don't reformat it into ####.
+      */
       const body = rows.map((o) => [
         o.orderNumber,
-        o.dealerId,
-        o.salesRepId,
-        o.createdAt.slice(0, 10),
-        o.status,
+        o.dealerName ?? o.dealerId,
+        o.salesRepName ?? o.salesRepId,
+        formatDate(o.createdAt),
+        ORDER_STATUS_LABEL[o.status],
+        String(o.items.length),
         String(o.totalAmount ?? 0),
       ]);
       const csvText = [header, ...body]
