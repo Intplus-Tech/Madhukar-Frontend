@@ -4,10 +4,10 @@
 
 @layer base {
   :root {
-  --header-h: 56px;
-  --bottom-nav-h: 72px;
-  --radius-card: 12px;
-}
+    --header-h: 56px;
+    --bottom-nav-h: 72px;
+    --radius-card: 12px;
+  }
 
   * {
     @apply border-line;
@@ -24,8 +24,7 @@
       linear-gradient(0deg, #f7f9fb, #f7f9fb);
   }
 
-  /* Visible keyboard focus, never a click ring */
- /*
+  /*
     Visible keyboard focus, never a click ring.
     Form fields are excluded: their wrapper draws the focus state, and a ring
     on the inner element as well reads as a second border inside the field.
@@ -48,6 +47,19 @@
   }
   input[type="number"] {
     -moz-appearance: textfield;
+  }
+}
+
+@layer components {
+  /*
+    Safety net: anything given a dark fill keeps white text, even when a
+    one-off className sets the background directly rather than using a variant.
+  */
+  .bg-ink:not(.text-ink),
+  .bg-black:not(.text-ink),
+  .bg-admin-sidebar:not(.text-ink),
+  .bg-accounts-sidebar:not(.text-ink) {
+    color: #ffffff;
   }
 }
 

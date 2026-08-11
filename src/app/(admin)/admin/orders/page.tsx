@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Pagination } from "@/components/ui";
 import {
@@ -10,6 +9,7 @@ import {
   OrdersTable,
   type OrderFilterState,
 } from "@/components/shared";
+import { OrderDetailModal } from "@/components/admin";
 import { orderService } from "@/lib/api";
 import { qk } from "@/lib/api/queryKeys";
 import { useLookup } from "@/hooks/use-lookup";
@@ -23,7 +23,6 @@ export default function AdminOrdersPage() {
   const [applied, setApplied] = useState<OrderFilterState>(EMPTY_FILTERS);
   const [page, setPage] = useState(1);
 
-  const router = useRouter();
   const { dealerName, repName, reps } = useLookup();
   const filters = toApiFilters(applied);
 
@@ -31,6 +30,8 @@ export default function AdminOrdersPage() {
     queryKey: qk.orders(filters, page),
     queryFn: () => orderService.list(filters, page, PAGE_SIZE),
   });
+
+  const [detailOrderId, setDetailOrderId] = useState<string | null>(null);
 
   const awaiting = (data?.data ?? [])
     .filter((o) => o.status === "pending")
@@ -84,7 +85,13 @@ export default function AdminOrdersPage() {
         loading={isLoading}
         dealerName={dealerName}
         repName={repName}
-        onAction={(order) => router.push(`/admin/orders/${order.id}`)}
+        onAction={(order) => setDetailOrderId(order.id)}
+      />
+
+      <OrderDetailModal
+        orderId={detailOrderId}
+        open={Boolean(detailOrderId)}
+        onClose={() => setDetailOrderId(null)}
       />
 
       {data && (

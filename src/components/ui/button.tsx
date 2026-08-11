@@ -7,14 +7,19 @@ import { cn } from "@/lib/utils";
 type Variant = "primary" | "secondary" | "navy" | "danger" | "success" | "ghost" | "link";
 type Size = "sm" | "md" | "lg" | "block";
 
+/*
+  Dark-filled variants use `text-white` rather than the `text-ink-inverse`
+  token deliberately: the token can be changed in tailwind.config.ts, and a
+  black button with dark text is invisible. The disabled state keeps white
+  text too — a greyed-out label on a grey fill reads as a broken button.
+*/
 const VARIANTS: Record<Variant, string> = {
   // The black CTA used across every screen in the Figma
- 
-  primary: "bg-ink text-ink-inverse hover:bg-black disabled:bg-line-strong disabled:text-ink-inverse",
+  primary: "bg-ink text-white hover:bg-black disabled:bg-line-strong disabled:text-white",
   secondary: "bg-surface text-ink border border-line hover:bg-surface-muted",
-  navy: "bg-admin-accent text-ink-inverse hover:brightness-110",
-  danger: "bg-danger-deep text-ink-inverse hover:brightness-110",
-  success: "bg-success text-ink-inverse hover:brightness-105",
+  navy: "bg-admin-accent text-white hover:brightness-110 disabled:text-white",
+  danger: "bg-danger-deep text-white hover:brightness-110 disabled:text-white",
+  success: "bg-success text-white hover:brightness-105 disabled:text-white",
   ghost: "text-ink hover:bg-surface-muted",
   link: "text-info underline-offset-4 hover:underline",
 };
