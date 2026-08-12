@@ -99,9 +99,14 @@ export const planningService = {
         // Names are cosmetic here — the counts still work without them
       }
 
-      const scheduled = res.dealersScheduled || stops.length;
+      /*
+        Progress is "plans submitted / dealers on today's route". The API's
+        planProgress.total counts the plans themselves, so it always reads
+        100% — the route's stop count is the correct denominator.
+      */
+      const scheduled = stops.length || res.dealersScheduled || 0;
       const planned = res.planProgress?.planned ?? res.planProgress?.completed ?? 0;
-      const total = res.planProgress?.total ?? scheduled;
+      const total = scheduled || res.planProgress?.total || 0;
 
       return {
         // Filled in by the page from the signed-in user
@@ -111,7 +116,7 @@ export const planningService = {
         dealersScheduled: scheduled,
         orderPlanValue: res.orderPlanTotal ?? 0,
         plannedCount: planned,
-        totalCount: total || scheduled,
+        totalCount: total,
         planSubmitted: planned > 0,
         /*
           The summary's activity rows arrive without dealerId or dealerName in

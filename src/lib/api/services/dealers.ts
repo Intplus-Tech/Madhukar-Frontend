@@ -32,11 +32,25 @@ export const dealerService = {
         — so it's only meaningful when an admin browses someone else's dealers.
       */
       const res = await http.get<{ data?: ApiDealer[]; items?: ApiDealer[] }>("/dealers", {
-        search: query || undefined,
+        search: query.trim() || undefined,
         salesRepId,
         limit: 50,
       });
-      return (res.data ?? res.items ?? []).map(mapDealer) as Dealer[];
+      const rows = (res.data ?? res.items ?? []).map(mapDealer) as Dealer[];
+
+      /*
+        A blank search returns nothing from the API, but tapping "Search
+        dealer" with an empty box should show everything assigned to the rep —
+        that's the natural way to browse.
+      */
+      if (rows.length === 0 && !query.trim()) {
+        const all = await http.get<{ data?: ApiDealer[]; items?: ApiDealer[] }>("/dealers", {
+          limit: 100,
+        });
+        return (all.data ?? all.items ?? []).map(mapDealer) as Dealer[];
+      }
+
+      return rows;
     }
     const q = query.trim().toLowerCase();
     const results = db.dealers.filter((d) => {

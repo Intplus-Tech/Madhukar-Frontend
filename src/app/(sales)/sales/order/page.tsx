@@ -42,14 +42,20 @@ export default function OrderPage() {
           }}
           onKeyDown={(e) => e.key === "Enter" && setSearched(true)}
           placeholder="Search dealers or locations..."
-          leading={<Search className="h-4 w-4 text-white" />}
+          leading={<Search className="h-4 w-4" />}
           className="border-line bg-surface"
           aria-label="Search dealers"
         />
 
-        <Button size="block" onClick={() => setSearched(true)} className="tracking-[0.06em] text-white rounded-none">
+        <Button size="block" onClick={() => setSearched(true)} className="tracking-[0.06em]">
           SEARCH DEALER
         </Button>
+
+        {!searched && (
+          <p className="-mt-1 text-center text-meta text-ink-muted">
+            Leave the box empty to see all your dealers.
+          </p>
+        )}
 
         {searched && (
           <section aria-live="polite">
@@ -61,8 +67,12 @@ export default function OrderPage() {
               </div>
             ) : !dealers?.length ? (
               <EmptyState
-                title="No dealers found"
-                description="Search by dealer name or area. Only dealers assigned to you appear here."
+                title={query.trim() ? "No dealers match that search" : "No dealers assigned yet"}
+                description={
+                  query.trim()
+                    ? "Try a different name or area, or clear the search to see all your dealers."
+                    : "Once dealers are assigned to you, they'll appear here."
+                }
               />
             ) : (
               <div className="space-y-2.5">
