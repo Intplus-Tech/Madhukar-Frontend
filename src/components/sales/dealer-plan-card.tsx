@@ -52,16 +52,20 @@ export function DealerPlanCard({
   const set = <K extends keyof PlanFormValues>(key: K, value: PlanFormValues[K]) =>
     setValues((prev) => ({ ...prev, [key]: value }));
 
-  const done = row.status === "completed";
+  /*
+    A draft row carries a synthetic id, so status alone isn't enough — the tick
+    should mean "a plan was submitted for this dealer today", nothing else.
+  */
+  const done = !row.id.startsWith("draft-") && row.status === "completed";
   const isUpdate = mode === "update";
 
   if (!expanded) {
     return (
-      <Card >
+      <Card>
         <button
           onClick={onToggle}
           aria-expanded={false}
-          className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left rounded-none"
+          className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left"
         >
           <span className="min-w-0">
             <span className="block truncate text-body-lg font-semibold text-ink">
@@ -160,7 +164,7 @@ export function DealerPlanCard({
             />
           </div>
 
-          <Button type="submit" size="block" loading={submitting} className="tracking-[0.06em] text-white rounded-none">
+          <Button type="submit" size="block" loading={submitting} className="tracking-[0.06em]">
             {isUpdate ? "SUBMIT TODAY'S REPORT" : "SUBMIT PLAN"}
           </Button>
         </form>

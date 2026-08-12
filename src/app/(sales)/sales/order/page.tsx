@@ -71,7 +71,7 @@ export default function OrderPage() {
                 description={
                   query.trim()
                     ? "Try a different name or area, or clear the search to see all your dealers."
-                    : "Once dealers are assigned to you, they'll appear here."
+                    : "No dealers are coming back from the server. If you can see dealers on the Plan screen, this is a server-side issue rather than your account."
                 }
               />
             ) : (

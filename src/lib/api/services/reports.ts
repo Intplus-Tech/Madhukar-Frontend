@@ -62,9 +62,19 @@ export const reportService = {
       }>("/reports/end-of-day");
 
       const perf = res.overallPerformance ?? {};
-      const planned = perf.planned ?? 0;
-      const achieved = perf.achieved ?? 0;
-      const percent = perf.achievedPercent ?? (planned ? Math.round((achieved / planned) * 100) : 0);
+      const visits = res.dealerVisits ?? [];
+
+      /*
+        overallPerformance comes back empty in practice, so the totals are
+        summed from the visit rows: planned is what was intended to be
+        collected, achieved is what actually was.
+      */
+      const planned =
+        perf.planned ?? visits.reduce((sum, v) => sum + (v.plannedAmount ?? 0), 0);
+      const achieved =
+        perf.achieved ?? visits.reduce((sum, v) => sum + (v.collectedAmount ?? 0), 0);
+      const percent =
+        perf.achievedPercent ?? (planned ? Math.round((achieved / planned) * 100) : 0);
 
       return {
         achievedPercent: percent,
@@ -72,7 +82,7 @@ export const reportService = {
         achievedTotal: achieved,
         remainingGap: Math.max(0, planned - achieved),
         performanceLabel: percent >= 90 ? "Above Avg" : percent >= 70 ? "On Track" : "Below Avg",
-        visits: (res.dealerVisits ?? []).map((v, i) => ({
+        visits: visits.map((v, i) => ({
           id: `${v.dealerId ?? "visit"}-${i}`,
           dealerId: v.dealerId ?? "",
           dealerName: v.dealerName ?? "Dealer",
