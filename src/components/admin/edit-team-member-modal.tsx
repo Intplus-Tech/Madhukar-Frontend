@@ -85,7 +85,8 @@ export function EditTeamMemberModal({
       notify("Team member updated");
       onClose();
     },
-    onError: () => notify("Couldn't save changes. Try again.", "error"),
+    onError: (err) =>
+      notify(err instanceof Error ? err.message : "Couldn't save changes.", "error"),
   });
 
   if (!open || !member || typeof document === "undefined") return null;

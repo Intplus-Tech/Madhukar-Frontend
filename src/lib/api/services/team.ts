@@ -159,15 +159,23 @@ export const teamService = {
   async update(payload: UpdateTeamMemberPayload): Promise<TeamMember> {
     if (!USE_MOCK) {
       /*
-        The API only exposes PATCH /users/profile/update, which edits the
-        *authenticated* user. There is no admin endpoint for editing another
-        person's route, quota, schedule or permissions yet, so saving here only
-        works when a manager edits their own row.
-        TODO: ask the backend for PATCH /users/{id}.
+        PATCH /users/{id} edits the chosen person. /users/profile/update was
+        used here before and silently edited whoever was signed in instead,
+        which is why saving appeared to do nothing.
+
+        Note the role strings the API accepts: 'sales' | 'account' | 'admin'.
+        'accounts' (plural) is rejected with a 400.
       */
-      const updated = await http.patch<ApiTeamUser>("/users/profile/update", {
+      const apiRole =
+        payload.position === "Sales Rep"
+          ? "sales"
+          : payload.position === "Accountant"
+            ? "account"
+            : "admin";
+
+      const updated = await http.patch<ApiTeamUser>(`/users/${payload.id}`, {
         fullName: payload.name,
-        role: payload.position === "Sales Rep" ? "sales" : payload.position === "Accountant" ? "accounts" : "admin",
+        role: apiRole,
         assignedRouteId: payload.routeId ?? null,
         visitQuotaTarget: payload.plannedTotal,
         scheduleDays: payload.schedule,
@@ -200,10 +208,16 @@ export const teamService = {
   /** Route options for the modal's Assigned Route select. */
   async routeOptions(): Promise<Array<{ label: string; value: string }>> {
     if (!USE_MOCK) {
-      const res = await http.get<{ items?: Array<{ _id: string; name: string }> }>("/routes", {
-        limit: 100,
-      });
-      return (res.items ?? []).map((r) => ({ label: r.name, value: r._id }));
+      // List endpoints nest their rows under `data`, not `items`
+      const res = await http.get<{
+        data?: Array<{ _id?: string; id?: string; name: string }>;
+        items?: Array<{ _id?: string; id?: string; name: string }>;
+      }>("/routes", { limit: 100 });
+
+      return (res.data ?? res.items ?? []).map((r) => ({
+        label: r.name,
+        value: r._id ?? r.id ?? "",
+      }));
     }
     return delay(db.routes.map((r) => ({ label: r.name, value: r.id })));
   },
