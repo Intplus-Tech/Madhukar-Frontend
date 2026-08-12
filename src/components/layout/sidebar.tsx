@@ -80,7 +80,7 @@ export function Sidebar({
                   onClick={onNavigate}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "flex items-center gap-3 rounded-field px-3 py-2.5 text-body transition-colors rounded-none",
+                    "flex items-center gap-3 rounded-field px-3 py-2.5 text-body transition-colors",
                     active
                       ? isAdmin
                         ? "bg-admin-sidebar-active font-medium text-admin-sidebar"
@@ -101,14 +101,17 @@ export function Sidebar({
 
       <div className="space-y-1 px-3 pb-8">
         {showSupport && (
-          <Link
-            href="/support"
-            onClick={onNavigate}
+          /*
+            No /support route exists yet, so this opens the support mailbox
+            rather than prefetching a page that 404s.
+          */
+          <a
+            href="mailto:support@mdapl.com?subject=Lakshya%2072%20support"
             className="flex items-center gap-3 rounded-field px-3 py-2.5 text-body text-admin-sidebar-text transition-colors hover:bg-white/5 hover:text-white"
           >
             <LifeBuoy className="h-[18px] w-[18px]" aria-hidden />
             Support
-          </Link>
+          </a>
         )}
         <button
           onClick={() => void logout()}
