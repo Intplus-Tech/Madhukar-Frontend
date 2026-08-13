@@ -19,16 +19,37 @@ interface VarianceRow {
   variance?: number;
 }
 
-/** The chart's period tabs map onto the endpoint's dateFrom/dateTo. */
-function periodRange(period: DashboardPeriod) {
+/** Earliest date included by each period tab, as YYYY-MM-DD. */
+function periodStart(period: DashboardPeriod) {
   const now = new Date();
-  const to = now.toISOString().slice(0, 10);
   const from = new Date(now);
 
   if (period === "wtd") from.setDate(now.getDate() - now.getDay());
   else if (period === "mtd") from.setDate(1);
 
-  return { dateFrom: from.toISOString().slice(0, 10), dateTo: to };
+  return from.toISOString().slice(0, 10);
+}
+
+/** Collapses visit rows into one plan/actual pair per day, oldest first. */
+function groupByDay(rows: VarianceRow[]) {
+  const byDay = new Map<string, { plan: number; actual: number }>();
+
+  for (const row of rows) {
+    const day = (row.visitDate ?? row.createdAt ?? "").slice(0, 10);
+    if (!day) continue;
+    const entry = byDay.get(day) ?? { plan: 0, actual: 0 };
+    entry.plan += row.plannedAmountSnapshot ?? row.plannedAmount ?? 0;
+    entry.actual += row.collectedAmount ?? 0;
+    byDay.set(day, entry);
+  }
+
+  return [...byDay.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([day, totals]) => ({
+      label: formatChartDate(day),
+      plan: totals.plan,
+      actual: totals.actual,
+    }));
 }
 
 function formatChartDate(iso?: string) {
@@ -262,15 +283,22 @@ export const reportService = {
           plannedAmountSnapshot rather than plannedAmount. The endpoint takes
           dateFrom/dateTo, not a period keyword.
         */
+        /*
+          No date params: visitDate is a full timestamp, so a dateTo of
+          "2026-08-13" excludes everything recorded that day. Filtering here
+          on the date portion avoids the boundary problem entirely.
+        */
         http
-          .get<{
-            data?: VarianceRow[];
-            items?: VarianceRow[];
-          }>("/reports/visit-variance", { ...periodRange(period), limit: 30 })
+          .get<{ data?: VarianceRow[]; items?: VarianceRow[] }>("/reports/visit-variance", {
+            limit: 100,
+          })
           .catch(() => ({ data: [] as VarianceRow[], items: [] as VarianceRow[] })),
       ]);
 
-      const varianceRows = variance.data ?? variance.items ?? [];
+      const from = periodStart(period);
+      const varianceRows = (variance.data ?? variance.items ?? []).filter(
+        (row) => (row.visitDate ?? row.createdAt ?? "").slice(0, 10) >= from,
+      );
 
       return {
         totalPlanned: planned,
@@ -278,11 +306,8 @@ export const reportService = {
         pendingBills: pending,
         planVsAchieved: [],
         latestOrders: (latest.data ?? latest.items ?? []).map(mapSalesOrder),
-        chart: varianceRows.map((row) => ({
-          label: formatChartDate(row.visitDate ?? row.createdAt),
-          plan: row.plannedAmountSnapshot ?? row.plannedAmount ?? 0,
-          actual: row.collectedAmount ?? 0,
-        })),
+        // One bar per day, with each day's visits summed
+        chart: groupByDay(varianceRows),
       };
     }
 

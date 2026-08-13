@@ -125,7 +125,11 @@ export function OrdersTable({
   repName: (id: string) => string;
   onAction: (order: SalesOrder) => void;
   actionLabel?: string;
-  /** Adds the order value column — used on the accounts billing queue. */
+  /**
+   * The accounts billing queue uses its own column order — Date first, with an
+   * order Value column. Admin keeps the original layout from the Figma:
+   * Order ID | Dealer | Rep | Date | Status | Action.
+   */
   showValue?: boolean;
 }) {
   if (loading) {
@@ -141,11 +145,22 @@ export function OrdersTable({
       <Table>
         <thead>
           <tr>
-            <Th>Date</Th>
-            <Th>Order ID</Th>
-            <Th>Dealer Name</Th>
-            <Th>Rep</Th>
-            {showValue && <Th className="text-right">Value</Th>}
+            {showValue ? (
+              <>
+                <Th>Date</Th>
+                <Th>Order ID</Th>
+                <Th>Dealer Name</Th>
+                <Th>Rep</Th>
+                <Th className="text-right">Value</Th>
+              </>
+            ) : (
+              <>
+                <Th>Order ID</Th>
+                <Th>Dealer</Th>
+                <Th>Rep</Th>
+                <Th>Date</Th>
+              </>
+            )}
             <Th>Status</Th>
             <Th className="text-right">Action</Th>
           </tr>
