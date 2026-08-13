@@ -18,7 +18,13 @@ export function PlanVsAchievedChart({ data }: { data: PlanVsAchievedPoint[] }) {
   return (
     <div className="h-[320px] w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 28, right: 8, bottom: 8, left: 8 }} barGap={2}>
+        {/* barGap 0 pairs the two bars; barCategoryGap keeps days apart */}
+        <BarChart
+          data={data}
+          margin={{ top: 28, right: 8, bottom: 8, left: 8 }}
+          barGap={0}
+          barCategoryGap="28%"
+        >
           <CartesianGrid vertical={false} stroke="#F1F3F5" />
           <XAxis
             dataKey="label"

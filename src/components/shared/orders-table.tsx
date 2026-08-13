@@ -1,6 +1,6 @@
 "use client";
 
-import { MoreHorizontal, SlidersHorizontal } from "lucide-react";
+import { SlidersHorizontal } from "lucide-react";
 import {
   Button,
   EmptyRow,
@@ -12,7 +12,7 @@ import {
   Th,
 } from "@/components/ui";
 import { OrderStatusPill } from "./status-pill";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import type { SalesOrder, SalesOrderStatus } from "@/types/domain";
 
 export interface OrderFilterState {
@@ -156,21 +156,40 @@ export function OrdersTable({
             ) : (
               <>
                 <Th>Order ID</Th>
-                <Th>Dealer</Th>
+                <Th>Dealer Name</Th>
                 <Th>Rep</Th>
-                <Th>Date</Th>
+                <Th className="text-right">Value</Th>
               </>
             )}
-            <Th>Status</Th>
             <Th className="text-right">Action</Th>
           </tr>
         </thead>
         <tbody>
           {orders.length === 0 ? (
-            <EmptyRow colSpan={showValue ? 7 : 6}>No orders match these filters.</EmptyRow>
+            <EmptyRow colSpan={6}>No orders match these filters.</EmptyRow>
           ) : (
             orders.map((order) => (
-              <tr key={order.id} className="transition-colors hover:bg-surface-muted">
+              <tr
+                key={order.id}
+                onClick={showValue ? undefined : () => onAction(order)}
+                tabIndex={showValue ? undefined : 0}
+                role={showValue ? undefined : "button"}
+                aria-label={showValue ? undefined : `${actionLabel} ${order.orderNumber}`}
+                onKeyDown={
+                  showValue
+                    ? undefined
+                    : (e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          onAction(order);
+                        }
+                      }
+                }
+                className={cn(
+                  "transition-colors hover:bg-surface-muted",
+                  !showValue && "cursor-pointer",
+                )}
+              >
                 <Td className="font-medium">{order.orderNumber}</Td>
                 {/* Prefer the name the API sent; fall back to a lookup */}
                 <Td>{order.dealerName ?? dealerName(order.dealerId)}</Td>
@@ -178,15 +197,6 @@ export function OrdersTable({
                 <Td className="whitespace-nowrap">{formatDate(order.createdAt)}</Td>
                 <Td>
                   <OrderStatusPill status={order.status as SalesOrderStatus} />
-                </Td>
-                <Td className="text-right">
-                  <button
-                    onClick={() => onAction(order)}
-                    aria-label={`${actionLabel} ${order.orderNumber}`}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded text-ink-muted transition-colors hover:bg-line-faint hover:text-ink"
-                  >
-                    <MoreHorizontal className="h-5 w-5" aria-hidden />
-                  </button>
                 </Td>
               </tr>
             ))

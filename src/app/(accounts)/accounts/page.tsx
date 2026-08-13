@@ -25,7 +25,7 @@ export default function AccountsDashboardPage() {
 
   async function exportData() {
     const blob = await orderService.exportCsv({});
-    downloadBlob(blob, `sales-orders-${new Date().toISOString().slice(0, 10)}.csv`);
+    downloadBlob(blob, `sales-orders-${new Date().toISOString().slice(0, 10)}.xlsx`);
   }
 
   return (

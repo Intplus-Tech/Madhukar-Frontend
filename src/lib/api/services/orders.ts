@@ -355,66 +355,81 @@ export const orderService = {
   },
 
   /**
-   * The API has no export endpoint, so the CSV is built client-side from the
-   * full filtered set — paging through results rather than exporting only the
-   * page currently on screen.
+   * The API has no export endpoint, so the workbook is built client-side from
+   * the full filtered set — every page, not just the one on screen.
+   *
+   * Written as a real .xlsx with explicit column widths, so dates and amounts
+   * are readable immediately rather than collapsing to ####.
    */
   async exportCsv(filters: SalesOrderFilters = {}): Promise<Blob> {
-    if (!USE_MOCK) {
-      const PAGE = 50; // the API rejects large page sizes
-      const MAX_PAGES = 50; // 5,000 rows — beyond that, ask for a real export endpoint
-      const rows: SalesOrder[] = [];
+    const PAGE = 50;
+    const MAX_PAGES = 100;
+    const collected: SalesOrder[] = [];
 
-      for (let page = 1; page <= MAX_PAGES; page += 1) {
-        const result = await orderService.list(filters, page, PAGE);
-        rows.push(...result.data);
-        if (page >= result.totalPages || result.data.length === 0) break;
-      }
-
-      const header = [
-        "Order ID",
-        "Date",
-        "Dealer",
-        "Representative",
-        "Items",
-        "Status",
-        "Amount",
-      ];
-
-      /*
-        Names come denormalised on each row, so the export shows what a person
-        would recognise rather than database ids. The date is written as a
-        readable string so spreadsheets don't reformat it into ####.
-      */
-      const body = rows.map((o) => [
-        o.orderNumber,
-        exportDate(o.createdAt),
-        o.dealerName ?? o.dealerId,
-        o.salesRepName ?? o.salesRepId,
-        itemSummary(o),
-        ORDER_STATUS_LABEL[o.status],
-        String(o.totalAmount ?? 0),
-      ]);
-      const csvText = [header, ...body]
-        .map((r) => r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
-        .join("\n");
-      return new Blob([csvText], { type: "text/csv;charset=utf-8;" });
+    for (let page = 1; page <= MAX_PAGES; page += 1) {
+      const result = await orderService.list(filters, page, PAGE);
+      collected.push(...result.data);
+      if (page >= result.totalPages || result.data.length === 0) break;
     }
 
-    const { data } = await orderService.list(filters, 1, 10_000);
-    const header = ["Order ID", "Dealer", "Representative", "Date", "Status", "Priority", "Amount"];
-    const rows = data.map((o) => [
-      o.orderNumber,
-      db.dealerName(o.dealerId),
-      db.repName(o.salesRepId),
-      o.createdAt.slice(0, 10),
-      o.status,
-      o.priority,
-      String(o.totalAmount ?? 0),
-    ]);
-    const csv = [header, ...rows]
-      .map((r) => r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
-      .join("\n");
-    return new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const XLSX = await import("xlsx");
+
+    const sheetRows = collected.map((o) => ({
+      "Order ID": o.orderNumber,
+      Date: exportDate(o.createdAt),
+      Dealer: o.dealerName ?? (USE_MOCK ? db.dealerName(o.dealerId) : o.dealerId),
+      "Sales Rep": o.salesRepName ?? (USE_MOCK ? db.repName(o.salesRepId) : o.salesRepId),
+      Items: itemSummary(o),
+      "Total Qty": o.items.reduce((sum, li) => sum + li.quantity, 0),
+      Billed: `${o.items.filter((li) => li.isBilled).length} of ${o.items.length}`,
+      Status: ORDER_STATUS_LABEL[o.status],
+      Priority: o.priority === "urgent" ? "Urgent" : "Normal",
+      Value: o.totalAmount ?? 0,
+      Notes: o.notes ?? "",
+    }));
+
+    const EMPTY = {
+      "Order ID": "",
+      Date: "",
+      Dealer: "",
+      "Sales Rep": "",
+      Items: "",
+      "Total Qty": "",
+      Billed: "",
+      Status: "",
+      Priority: "",
+      Value: "",
+      Notes: "",
+    };
+
+    const sheet = XLSX.utils.json_to_sheet(sheetRows.length ? sheetRows : [EMPTY]);
+
+    // Column widths in characters — wide enough that nothing renders as ####
+    sheet["!cols"] = [
+      { wch: 14 },
+      { wch: 14 },
+      { wch: 26 },
+      { wch: 18 },
+      { wch: 46 },
+      { wch: 10 },
+      { wch: 10 },
+      { wch: 12 },
+      { wch: 10 },
+      { wch: 14 },
+      { wch: 40 },
+    ];
+
+    // Value column formatted as currency
+    for (let row = 2; row <= sheetRows.length + 1; row += 1) {
+      const cell = sheet[`J${row}`];
+      if (cell) cell.z = "#,##0.00";
+    }
+
+    const book = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(book, sheet, "Sales Orders");
+
+    return new Blob([XLSX.write(book, { bookType: "xlsx", type: "array" })], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
   },
 };

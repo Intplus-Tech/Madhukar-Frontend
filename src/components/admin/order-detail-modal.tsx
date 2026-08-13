@@ -76,7 +76,12 @@ export function OrderDetailModal({
 
   if (!open || typeof document === "undefined") return null;
 
-  const isComplete = order?.status === "completed";
+  /*
+    Once every line item is billed there's nothing left to act on, so both
+    footer buttons go inactive. While anything is outstanding, both are live.
+  */
+  const allBilled = Boolean(order && order.items.length > 0 && order.items.every((i) => i.isBilled));
+  const isComplete = order?.status === "completed" || allBilled;
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
@@ -252,7 +257,7 @@ export function OrderDetailModal({
           </p>
 
           <div className="flex flex-wrap gap-3">
-            <Button variant="secondary" onClick={onClose}>
+            <Button variant="secondary" disabled={isComplete} onClick={onClose}>
               Save Draft
             </Button>
             <Button
