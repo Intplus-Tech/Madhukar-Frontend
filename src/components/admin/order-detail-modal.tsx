@@ -262,9 +262,20 @@ export function OrderDetailModal({
             </Button>
             <Button
               variant="navy"
-              disabled={isComplete || !note.trim()}
+              disabled={isComplete}
               loading={sendFeedback.isPending}
-              onClick={() => sendFeedback.mutate()}
+              onClick={() => {
+                /*
+                  Live whenever the order is outstanding. The note requirement
+                  is enforced on click rather than by grey-ing out the button,
+                  which otherwise reads as "this order can't be actioned".
+                */
+                if (!note.trim()) {
+                  notify("Add a note before notifying the team.", "error");
+                  return;
+                }
+                sendFeedback.mutate();
+              }}
             >
               {isComplete ? "Order Completed" : "Process Billing & Notify Team"}
             </Button>

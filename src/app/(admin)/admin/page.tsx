@@ -4,9 +4,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardSkeleton, Skeleton } from "@/components/ui";
 import { OrdersTable, QueryError, StatCard } from "@/components/shared";
-import { PlanVsAchievedChart } from "@/components/admin";
-import { BillingModal, DockedReviewTab } from "@/components/accounts";
-import { useBillingQueue } from "@/hooks/use-billing-queue";
+import { OrderDetailModal, PlanVsAchievedChart } from "@/components/admin";
 import { reportService } from "@/lib/api";
 import { qk } from "@/lib/api/queryKeys";
 import { useLookup } from "@/hooks/use-lookup";
@@ -28,10 +26,8 @@ export default function AdminDashboardPage() {
     queryFn: () => reportService.adminDashboard(period),
   });
 
-  const billing = useBillingQueue(
-    (data?.latestOrders ?? []).map((o) => o.id),
-    (id) => data?.latestOrders.find((o) => o.id === id)?.orderNumber ?? id,
-  );
+  // Admin inspects an order rather than billing it — billing belongs to accounts
+  const [detailOrderId, setDetailOrderId] = useState<string | null>(null);
 
   return (
     <div className="space-y-6">
@@ -112,21 +108,13 @@ export default function AdminDashboardPage() {
         loading={isLoading}
         dealerName={dealerName}
         repName={repName}
-        onAction={(order) => billing.openAt(order.id)}
+        onAction={(order) => setDetailOrderId(order.id)}
       />
-      <BillingModal
-        orderId={billing.activeId}
-        open={billing.isOpen}
-        onClose={billing.close}
-        onMinimise={billing.minimise}
-        onAdvance={billing.advance}
-        queuePosition={billing.position}
-        actorRole="admin"
+      <OrderDetailModal
+        orderId={detailOrderId}
+        open={Boolean(detailOrderId)}
+        onClose={() => setDetailOrderId(null)}
       />
-
-      {billing.isDocked && billing.activeId && (
-        <DockedReviewTab label={billing.activeLabel ?? "order"} onRestore={billing.restore} />
-      )}
     </div>
   );
 }
