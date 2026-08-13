@@ -126,16 +126,20 @@ export function OrdersTable({
   onAction: (order: SalesOrder) => void;
   actionLabel?: string;
   /**
-   * The accounts billing queue uses its own column order — Date first, with an
-   * order Value column. Admin keeps the original layout from the Figma:
-   * Order ID | Dealer | Rep | Date | Status | Action.
+   * Accounts billing queue layout:
+   *   Date | Order ID | Dealer Name | Rep | Value | Action(Bill Now)
+   *
+   * Admin layout (showValue = false):
+   *   Order ID | Dealer Name | Rep | Value | Action(status), whole row clickable
    */
   showValue?: boolean;
 }) {
+  const columnCount = showValue ? 6 : 5;
+
   if (loading) {
     return (
       <TableWrap>
-        <TableSkeleton rows={7} cols={showValue ? 7 : 6} />
+        <TableSkeleton rows={7} cols={columnCount} />
       </TableWrap>
     );
   }
@@ -145,61 +149,85 @@ export function OrdersTable({
       <Table>
         <thead>
           <tr>
-            {showValue ? (
-              <>
-                <Th>Date</Th>
-                <Th>Order ID</Th>
-                <Th>Dealer Name</Th>
-                <Th>Rep</Th>
-                <Th className="text-right">Value</Th>
-              </>
-            ) : (
-              <>
-                <Th>Order ID</Th>
-                <Th>Dealer Name</Th>
-                <Th>Rep</Th>
-                <Th className="text-right">Value</Th>
-              </>
-            )}
+            {showValue && <Th className="whitespace-nowrap">Date</Th>}
+            <Th>Order ID</Th>
+            <Th>Dealer Name</Th>
+            <Th>Rep</Th>
+            <Th className="text-right">Value</Th>
             <Th className="text-right">Action</Th>
           </tr>
         </thead>
+
         <tbody>
           {orders.length === 0 ? (
-            <EmptyRow colSpan={6}>No orders match these filters.</EmptyRow>
+            <EmptyRow colSpan={columnCount}>No orders match these filters.</EmptyRow>
           ) : (
-            orders.map((order) => (
-              <tr
-                key={order.id}
-                onClick={showValue ? undefined : () => onAction(order)}
-                tabIndex={showValue ? undefined : 0}
-                role={showValue ? undefined : "button"}
-                aria-label={showValue ? undefined : `${actionLabel} ${order.orderNumber}`}
-                onKeyDown={
-                  showValue
-                    ? undefined
-                    : (e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          onAction(order);
+            orders.map((order) => {
+              const rowIsButton = !showValue;
+
+              return (
+                <tr
+                  key={order.id}
+                  onClick={rowIsButton ? () => onAction(order) : undefined}
+                  tabIndex={rowIsButton ? 0 : undefined}
+                  role={rowIsButton ? "button" : undefined}
+                  aria-label={rowIsButton ? `${actionLabel} ${order.orderNumber}` : undefined}
+                  onKeyDown={
+                    rowIsButton
+                      ? (e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            onAction(order);
+                          }
                         }
-                      }
-                }
-                className={cn(
-                  "transition-colors hover:bg-surface-muted",
-                  !showValue && "cursor-pointer",
-                )}
-              >
-                <Td className="font-medium">{order.orderNumber}</Td>
-                {/* Prefer the name the API sent; fall back to a lookup */}
-                <Td>{order.dealerName ?? dealerName(order.dealerId)}</Td>
-                <Td>{order.salesRepName ?? repName(order.salesRepId)}</Td>
-                <Td className="whitespace-nowrap">{formatDate(order.createdAt)}</Td>
-                <Td>
-                  <OrderStatusPill status={order.status as SalesOrderStatus} />
-                </Td>
-              </tr>
-            ))
+                      : undefined
+                  }
+                  className={cn(
+                    "transition-colors hover:bg-surface-muted",
+                    rowIsButton && "cursor-pointer",
+                  )}
+                >
+                  {showValue && (
+                    <Td className="whitespace-nowrap">{formatDate(order.createdAt)}</Td>
+                  )}
+
+                  <Td className="font-medium">{order.orderNumber}</Td>
+
+                  {/* Prefer the name the API sent; fall back to a lookup */}
+                  <Td>{order.dealerName ?? dealerName(order.dealerId)}</Td>
+                  <Td>{order.salesRepName ?? repName(order.salesRepId)}</Td>
+
+                  <Td className="whitespace-nowrap text-right tabular-nums">
+                    {formatCurrency(order.totalAmount ?? 0)}
+                  </Td>
+
+                  <Td className="text-right">
+                    {showValue ? (
+                      /*
+                        Accounts act on a row rather than inspect it. A
+                        completed order has nothing left to bill, so it shows
+                        its status instead of a dead button.
+                      */
+                      order.status === "completed" ? (
+                        <OrderStatusPill status={order.status as SalesOrderStatus} />
+                      ) : (
+                        <Button
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onAction(order);
+                          }}
+                        >
+                          Bill Now
+                        </Button>
+                      )
+                    ) : (
+                      <OrderStatusPill status={order.status as SalesOrderStatus} />
+                    )}
+                  </Td>
+                </tr>
+              );
+            })
           )}
         </tbody>
       </Table>
