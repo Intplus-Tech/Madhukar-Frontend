@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BackHeader } from "@/components/layout";
 import { EmptyState, Skeleton, useToast } from "@/components/ui";
@@ -64,7 +65,29 @@ export default function PlanningUpdatePage() {
 
       <div className="space-y-4 px-4">
         <DealerSearchBar value={query} onChange={setQuery} />
-        <h2 className="text-title-sm font-semibold text-ink">Recommended Sequence</h2>
+
+        <div role="tablist" aria-label="Planning stage" className="flex rounded-field bg-surface-muted p-1">
+          <Link
+            href="/sales/plan"
+            role="tab"
+            aria-selected={false}
+            className="flex-1 rounded-[7px] py-2 text-center text-body text-ink-muted transition-colors hover:text-ink"
+          >
+            Morning plan
+          </Link>
+          <span
+            role="tab"
+            aria-selected
+            className="flex-1 rounded-[7px] bg-surface py-2 text-center text-body font-medium text-ink shadow-card"
+          >
+            End-of-day report
+          </span>
+        </div>
+
+        <h2 className="text-title-sm font-semibold text-ink">Today&apos;s planned visits</h2>
+        <p className="-mt-2 text-meta text-ink-muted">
+          Record what was actually collected against each plan.
+        </p>
 
         {isLoading ? (
           <div className="space-y-3">

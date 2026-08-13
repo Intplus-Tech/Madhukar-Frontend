@@ -42,7 +42,7 @@ export function DealerPlanCard({
   submitting?: boolean;
 }) {
   const [values, setValues] = useState<PlanFormValues>({
-    orderPlanValue: 0,
+    orderPlanValue: mode === "plan" ? (row.plannedOrderAmount ?? 0) : 0,
     paymentPlanValue: mode === "plan" ? (row.plannedCollectionAmount ?? 0) : 0,
     hasServiceIssue: false,
     serviceIssueNote: "",
@@ -109,20 +109,25 @@ export function DealerPlanCard({
           }}
           className="space-y-4"
         >
+          {/*
+            Evening pass: the figure planned in the morning sits to the right of
+            the label, and the input captures what was actually achieved. That
+            pairing is what makes the variance report meaningful.
+          */}
           <PlanField
-            label="Order plan"
-            plannedValue={isUpdate ? 0 : undefined}
+            label={isUpdate ? "Order achieved" : "Order plan"}
+            plannedValue={isUpdate ? (row.plannedOrderAmount ?? 0) : undefined}
             value={values.orderPlanValue}
             onChange={(v) => set("orderPlanValue", v)}
-            placeholder={isUpdate ? "0" : "0.00"}
+            placeholder="0"
           />
 
           <PlanField
-            label="Payment plan"
-            plannedValue={isUpdate ? (row.plannedCollectionAmount ?? 45000) : undefined}
+            label={isUpdate ? "Payment collected" : "Payment plan"}
+            plannedValue={isUpdate ? (row.plannedCollectionAmount ?? 0) : undefined}
             value={values.paymentPlanValue}
             onChange={(v) => set("paymentPlanValue", v)}
-            placeholder={isUpdate ? "0" : "45000"}
+            placeholder="0"
           />
 
           <div className="rounded-field bg-surface-muted p-3.5">
@@ -191,8 +196,9 @@ function PlanField({
       <div className="mb-1.5 flex items-baseline justify-between gap-3">
         <FieldLabel className="mb-0">{label}</FieldLabel>
         {plannedValue !== undefined && (
-          <span className={cn("text-body font-medium text-ink")}>
-            {formatCurrency(plannedValue)}
+          <span className="text-body text-ink-muted">
+            Planned{" "}
+            <span className="font-medium text-ink">{formatCurrency(plannedValue)}</span>
           </span>
         )}
       </div>

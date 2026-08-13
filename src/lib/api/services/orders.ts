@@ -7,7 +7,6 @@ import type {
   SalesOrderFilters,
 } from "@/types/domain";
 import { USE_MOCK, delay, http } from "../http";
-import { formatDate } from "@/lib/utils";
 import { ORDER_STATUS_LABEL } from "@/lib/constants";
 import {
   mapSalesOrder,
@@ -38,6 +37,24 @@ export interface SendFeedbackPayload {
   toRoles: Array<"sales" | "accounts">;
   /** Real API takes explicit user IDs; the mock derives them from roles. */
   recipientIds?: string[];
+}
+
+/** "Spark Electric Kettle (2), Nova Ceiling Fan 1200mm (1)" */
+function itemSummary(order: SalesOrder) {
+  if (order.items.length === 0) return "—";
+  return order.items.map((li) => `${li.productName} (${li.quantity})`).join(", ");
+}
+
+/**
+ * "11 Aug 2026" — short enough that Excel's default column width shows it in
+ * full rather than collapsing to ####.
+ */
+function exportDate(iso: string) {
+  return new Date(iso).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 export const orderService = {
@@ -277,14 +294,14 @@ export const orderService = {
       }
       if (recipients.length === 0) throw new Error("No recipient for this feedback.");
 
-      // Feedback is purely a message — the status change is a separate call
+      /*
+        Feedback is a message, not a rejection. Per the walkthrough, an order
+        that couldn't be billed stays PENDING so it remains in the queue and in
+        the pending export — it isn't closed off.
+      */
       await http.post(`/sales-orders/${payload.orderId}/feedback`, {
         message: payload.message,
         recipientIds: recipients,
-      });
-      await http.patch(`/sales-orders/${payload.orderId}/status`, {
-        status: "rejected",
-        remarks: payload.message.slice(0, 2000),
       });
       return {
         id: `${payload.orderId}-fb`,
@@ -356,11 +373,11 @@ export const orderService = {
 
       const header = [
         "Order ID",
+        "Date",
         "Dealer",
         "Representative",
-        "Date",
-        "Status",
         "Items",
+        "Status",
         "Amount",
       ];
 
@@ -371,11 +388,11 @@ export const orderService = {
       */
       const body = rows.map((o) => [
         o.orderNumber,
+        exportDate(o.createdAt),
         o.dealerName ?? o.dealerId,
         o.salesRepName ?? o.salesRepId,
-        formatDate(o.createdAt),
+        itemSummary(o),
         ORDER_STATUS_LABEL[o.status],
-        String(o.items.length),
         String(o.totalAmount ?? 0),
       ]);
       const csvText = [header, ...body]

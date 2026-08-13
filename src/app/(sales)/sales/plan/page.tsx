@@ -63,15 +63,29 @@ export default function PlanningPage() {
       <div className="space-y-4 px-4 pt-4">
         <DealerSearchBar value={query} onChange={setQuery} />
 
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-title-sm font-semibold text-ink">Recommended Sequence</h2>
+        {/*
+          Two passes a day: plan in the morning, report in the evening. The
+          switch used to be a small link and was easy to miss entirely.
+        */}
+        <div role="tablist" aria-label="Planning stage" className="flex rounded-field bg-surface-muted p-1">
+          <span
+            role="tab"
+            aria-selected
+            className="flex-1 rounded-[7px] bg-surface py-2 text-center text-body font-medium text-ink shadow-card"
+          >
+            Morning plan
+          </span>
           <Link
             href="/sales/plan/update"
-            className="text-meta font-medium text-ink underline-offset-4 hover:underline"
+            role="tab"
+            aria-selected={false}
+            className="flex-1 rounded-[7px] py-2 text-center text-body text-ink-muted transition-colors hover:text-ink"
           >
-            End-of-day update
+            End-of-day report
           </Link>
         </div>
+
+        <h2 className="text-title-sm font-semibold text-ink">Recommended Sequence</h2>
 
         {isLoading ? (
           <div className="space-y-3">

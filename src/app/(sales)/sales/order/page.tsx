@@ -121,11 +121,15 @@ export default function OrderPage() {
               ) : (
                 history.data.map((order) => (
                   <div key={order.id} className="rounded-field border border-line px-3.5 py-3">
-                    <p className="text-body-lg font-semibold text-ink">{order.orderNumber}</p>
+                    {/* The dealer is what a rep recognises — the id means nothing to them */}
+                    <p className="text-body-lg font-semibold text-ink">
+                      {order.dealerName ?? "Dealer"}
+                    </p>
                     <p className="mt-0.5 text-body text-ink-muted">
                       {order.items.length} item{order.items.length === 1 ? "" : "s"} ·{" "}
                       {formatDate(order.createdAt)}
                     </p>
+                    <p className="mt-0.5 text-meta text-ink-faint">{order.orderNumber}</p>
                   </div>
                 ))
               )}

@@ -12,7 +12,7 @@ import {
   Th,
 } from "@/components/ui";
 import { OrderStatusPill } from "./status-pill";
-import { formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@/lib/utils";
 import type { SalesOrder, SalesOrderStatus } from "@/types/domain";
 
 export interface OrderFilterState {
@@ -117,6 +117,7 @@ export function OrdersTable({
   repName,
   onAction,
   actionLabel = "View order",
+  showValue = false,
 }: {
   orders: SalesOrder[];
   loading?: boolean;
@@ -124,11 +125,13 @@ export function OrdersTable({
   repName: (id: string) => string;
   onAction: (order: SalesOrder) => void;
   actionLabel?: string;
+  /** Adds the order value column — used on the accounts billing queue. */
+  showValue?: boolean;
 }) {
   if (loading) {
     return (
       <TableWrap>
-        <TableSkeleton rows={7} cols={6} />
+        <TableSkeleton rows={7} cols={showValue ? 7 : 6} />
       </TableWrap>
     );
   }
@@ -138,17 +141,18 @@ export function OrdersTable({
       <Table>
         <thead>
           <tr>
-            <Th>Order ID</Th>
-            <Th>Dealer</Th>
-            <Th>Rep</Th>
             <Th>Date</Th>
+            <Th>Order ID</Th>
+            <Th>Dealer Name</Th>
+            <Th>Rep</Th>
+            {showValue && <Th className="text-right">Value</Th>}
             <Th>Status</Th>
             <Th className="text-right">Action</Th>
           </tr>
         </thead>
         <tbody>
           {orders.length === 0 ? (
-            <EmptyRow colSpan={6}>No orders match these filters.</EmptyRow>
+            <EmptyRow colSpan={showValue ? 7 : 6}>No orders match these filters.</EmptyRow>
           ) : (
             orders.map((order) => (
               <tr key={order.id} className="transition-colors hover:bg-surface-muted">

@@ -268,6 +268,7 @@ export function mapVisitPlan(raw: ApiVisitPlan): VisitPlan {
     plannedDate: (raw.visitDate ?? new Date().toISOString()).slice(0, 10),
     status: raw.status === "submitted" ? "completed" : "planned",
     hasOrderPlan: (raw.orderPlanAmount ?? 0) > 0,
+    plannedOrderAmount: raw.orderPlanAmount,
     hasPaymentPlan: (raw.plannedAmount ?? 0) > 0,
     plannedCollectionAmount: raw.plannedAmount,
     hasServicePlan: raw.hasServiceIssue ?? false,

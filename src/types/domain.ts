@@ -112,6 +112,8 @@ export interface VisitPlan {
 
   /** "I add order plan" — intent to take an order on this visit. */
   hasOrderPlan: boolean;
+  /** The value planned, so the evening update can show plan against actual. */
+  plannedOrderAmount?: number;
   orderPlanNotes?: string;
 
   /** "if I have payment plan" — the 45 in "my plan was to collect 45". */

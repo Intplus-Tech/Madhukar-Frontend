@@ -104,6 +104,7 @@ function AccountsOrdersInner() {
         repName={repName}
         onAction={(order) => billing.openAt(order.id)}
         actionLabel="Review and bill"
+        showValue
       />
 
       {data && (
