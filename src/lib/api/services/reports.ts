@@ -1,4 +1,5 @@
 import type {
+  VisitOutcome,
   AccountsOverview,
   AdminDashboardSummary,
   DashboardPeriod,
@@ -35,6 +36,20 @@ function formatChartDate(iso?: string) {
   return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 }
 
+/** The API sends the outcome directly — no need to infer it from amounts. */
+function mapVisitOutcome(status?: string): VisitOutcome {
+  switch (status) {
+    case "order_placed":
+      return "order_placed";
+    case "payment_collected":
+      return "payment_collected";
+    case "visited":
+      return "visited";
+    default:
+      return "not_visited";
+  }
+}
+
 function daysSince(iso: string) {
   if (!iso) return 0;
   const diff = Date.now() - new Date(iso).getTime();
@@ -46,56 +61,60 @@ export const reportService = {
   /** Sales rep's own end-of-day report. */
   async salesReport(salesRepId: string): Promise<SalesReport> {
     if (!USE_MOCK) {
+      /*
+        Field names here are the API's, not the UI's: percentAchieved,
+        plannedTotal, achievedTotal, and doneAmount on each visit. The status
+        string also arrives ready-made, so the outcome pill doesn't need
+        deriving from amounts.
+      */
       const res = await http.get<{
-        overallPerformance?: { achievedPercent?: number; planned?: number; achieved?: number };
+        date?: string;
+        overallPerformance?: {
+          percentAchieved?: number;
+          aboveAverage?: boolean;
+          plannedTotal?: number;
+          achievedTotal?: number;
+          remainingGap?: number;
+        };
         dealerVisitsCount?: number;
         dealerVisits?: Array<{
+          sequence?: number;
           dealerId?: string;
           dealerName?: string;
-          location?: string;
           address?: string;
+          status?: string;
           plannedAmount?: number;
-          collectedAmount?: number | null;
-          orderPlaced?: boolean;
-          visited?: boolean;
+          doneAmount?: number | null;
         }>;
       }>("/reports/end-of-day");
 
       const perf = res.overallPerformance ?? {};
       const visits = res.dealerVisits ?? [];
 
-      /*
-        overallPerformance comes back empty in practice, so the totals are
-        summed from the visit rows: planned is what was intended to be
-        collected, achieved is what actually was.
-      */
-      const planned =
-        perf.planned ?? visits.reduce((sum, v) => sum + (v.plannedAmount ?? 0), 0);
-      const achieved =
-        perf.achieved ?? visits.reduce((sum, v) => sum + (v.collectedAmount ?? 0), 0);
+      const plannedTotal = perf.plannedTotal ?? 0;
+      const achievedTotal = perf.achievedTotal ?? 0;
       const percent =
-        perf.achievedPercent ?? (planned ? Math.round((achieved / planned) * 100) : 0);
+        perf.percentAchieved ??
+        (plannedTotal ? Math.round((achievedTotal / plannedTotal) * 100) : 0);
 
       return {
         achievedPercent: percent,
-        plannedTotal: planned,
-        achievedTotal: achieved,
-        remainingGap: Math.max(0, planned - achieved),
-        performanceLabel: percent >= 90 ? "Above Avg" : percent >= 70 ? "On Track" : "Below Avg",
+        plannedTotal,
+        achievedTotal,
+        remainingGap: perf.remainingGap ?? Math.max(0, plannedTotal - achievedTotal),
+        performanceLabel: perf.aboveAverage
+          ? "Above Avg"
+          : percent >= 70
+            ? "On Track"
+            : "Below Avg",
         visits: visits.map((v, i) => ({
           id: `${v.dealerId ?? "visit"}-${i}`,
           dealerId: v.dealerId ?? "",
           dealerName: v.dealerName ?? "Dealer",
-          address: v.location ?? v.address ?? "",
-          outcome: v.orderPlaced
-            ? "order_placed"
-            : (v.collectedAmount ?? 0) > 0
-              ? "payment_collected"
-              : v.visited
-                ? "visited"
-                : "not_visited",
+          address: v.address ?? "",
+          outcome: mapVisitOutcome(v.status),
           plannedAmount: v.plannedAmount ?? 0,
-          achievedAmount: v.collectedAmount ?? null,
+          achievedAmount: v.doneAmount ?? null,
         })),
       };
     }
