@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 export function BrandMark({ className }: { className?: string }) {
   return (
     <Image
-      src="/logo.svg"
+      src="/new-madhukar.png"
       alt="Lakshya 72"
       width={72}
       height={72}

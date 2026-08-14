@@ -21,9 +21,9 @@ export function AuthShell({
         <div className="w-full max-w-mobile">
           <div className="flex flex-col items-center text-center">
             <BrandMark className="h-[72px] w-[72px]" />
-            <h1 className="mt-4 font-display text-[26px] font-bold tracking-[0.02em] text-ink">
+            {/* <h1 className="mt-4 font-display text-[26px] font-bold tracking-[0.02em] text-ink">
               LAKSHYA 72
-            </h1>
+            </h1> */}
             <p className="mt-1.5 text-body-lg text-ink-muted">{APP_TAGLINE}</p>
           </div>
 
