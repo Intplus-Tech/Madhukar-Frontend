@@ -39,6 +39,13 @@ export interface SendFeedbackPayload {
   recipientIds?: string[];
 }
 
+/** The day after the given date, so a same-day filter includes that day. */
+function dayAfter(date: string) {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
 /** "Spark Electric Kettle (2), Nova Ceiling Fan 1200mm (1)" */
 function itemSummary(order: SalesOrder) {
   if (order.items.length === 0) return "—";
@@ -70,9 +77,14 @@ export const orderService = {
           status: Array.isArray(filters.status) ? filters.status[0] : filters.status,
           salesRepId: filters.salesRepId,
           dealerId: filters.dealerId,
-          search: filters.search,
-          startDate: filters.dateRange?.from,
-          endDate: filters.dateRange?.to,
+          search: filters.search?.trim() || undefined,
+          dateFrom: filters.dateRange?.from,
+          /*
+            orderDate is a full timestamp, so a dateTo of the same day would
+            exclude everything recorded after midnight. Push the upper bound to
+            the following day.
+          */
+          dateTo: filters.dateRange?.to ? dayAfter(filters.dateRange.to) : undefined,
           page,
           limit: pageSize,
         },

@@ -94,6 +94,11 @@ function AccountsOrdersInner() {
           setApplied(draft);
           setPage(1);
         }}
+        onClear={() => {
+          setDraft(EMPTY_FILTERS);
+          setApplied(EMPTY_FILTERS);
+          setPage(1);
+        }}
         onExport={() => void exportCsv()}
       />
 

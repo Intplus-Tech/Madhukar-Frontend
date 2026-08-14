@@ -56,7 +56,11 @@ export default function PlanningUpdatePage() {
     const planned = rows.filter((r) => !r.id.startsWith("draft-"));
     const q = query.trim().toLowerCase();
     if (!q) return planned;
-    return planned.filter((r) => r.dealer.name.toLowerCase().includes(q));
+    return planned.filter(
+      (r) =>
+        r.dealer.name.toLowerCase().includes(q) ||
+        (r.dealer.address ?? "").toLowerCase().includes(q),
+    );
   }, [rows, query]);
 
   return (

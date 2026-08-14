@@ -17,10 +17,16 @@ export default function OrderPage() {
   const [searched, setSearched] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(true);
 
+  /*
+    Results persist while the query changes rather than blanking out, so the
+    list filters live and the SEARCH DEALER button is a convenience, not a
+    requirement.
+  */
   const { data: dealers, isFetching } = useQuery({
-    queryKey: qk.dealerSearch(query, user?.id),
+    queryKey: qk.dealerSearch(query.trim(), user?.id),
     queryFn: () => dealerService.search(query, user!.id),
     enabled: Boolean(user) && searched,
+    placeholderData: (previous) => previous,
   });
 
   const { data: history } = useQuery({
@@ -36,10 +42,7 @@ export default function OrderPage() {
       <div className="space-y-4 px-4 pt-4">
         <Input
           value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setSearched(false);
-          }}
+          onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && setSearched(true)}
           placeholder="Search dealers or locations..."
           leading={<Search className="h-4 w-4" />}

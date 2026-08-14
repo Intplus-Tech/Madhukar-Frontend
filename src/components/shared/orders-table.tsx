@@ -19,13 +19,21 @@ export interface OrderFilterState {
   date: string;
   salesRepId: string;
   status: string;
+  search: string;
 }
 
-export const EMPTY_FILTERS: OrderFilterState = { date: "", salesRepId: "", status: "" };
+export const EMPTY_FILTERS: OrderFilterState = {
+  date: "",
+  salesRepId: "",
+  status: "",
+  search: "",
+};
 
+/** Mirrors the API's status enum exactly — a value it doesn't know is ignored. */
 const STATUS_OPTIONS = [
   { label: "All", value: "" },
   { label: "Pending", value: "pending" },
+  { label: "Partially billed", value: "partially_billed" },
   { label: "Billed", value: "billed" },
   { label: "Completed", value: "completed" },
   { label: "Blocked", value: "rejected" },
@@ -50,7 +58,21 @@ export function OrderFilterBar({
 }) {
   return (
     <div className="rounded-card border border-line bg-surface p-4">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-[repeat(3,minmax(0,200px))_auto_auto] lg:items-end">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-[repeat(4,minmax(0,180px))_auto_auto] lg:items-end">
+        <div>
+          <label htmlFor="filter-search" className="mb-1.5 block text-body text-ink-muted">
+            Search
+          </label>
+          <input
+            id="filter-search"
+            value={value.search}
+            onChange={(e) => onChange({ ...value, search: e.target.value })}
+            onKeyDown={(e) => e.key === "Enter" && onApply()}
+            placeholder="Order ID or dealer"
+            className="h-10 w-full rounded-field border border-line bg-surface px-3 text-body text-ink outline-none transition-colors focus:border-ink"
+          />
+        </div>
+
         <div>
           <label htmlFor="filter-date" className="mb-1.5 block text-body text-ink-muted">
             Date
