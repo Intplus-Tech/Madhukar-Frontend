@@ -6,10 +6,10 @@ export function BrandMark({ className }: { className?: string }) {
     <Image
       src="/new-madhukar.png"
       alt="new-madhukar"
-      width={72}
-      height={72}
+      width={112}
+      height={112}
       priority
-      className={cn("h-16 w-16", className)}
+      className={cn("h-28 w-28", className)}
     />
   );
 }
