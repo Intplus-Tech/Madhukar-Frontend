@@ -1,25 +1,39 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { db } from "@/lib/api/mock/db";
-import { USE_MOCK } from "@/lib/api";
+import { USE_MOCK, teamService } from "@/lib/api";
 
 /**
- * Dealer/rep name lookups for table cells.
+ * Dealer and rep lookups for tables and filter dropdowns.
  *
- * The mock layer resolves these locally. Once the real API is wired, the list
- * endpoints should return `dealerName` and `salesRepName` on each row so this
- * hook can be deleted rather than turned into an N+1 fetch.
+ * List endpoints already return `dealerName` and `salesRepName` on each row,
+ * so the name helpers are only a fallback. The rep options, though, have to be
+ * fetched — the filter dropdown can't offer names it doesn't have.
  */
 export function useLookup() {
-  const dealerName = useCallback(
-    (id: string) => (USE_MOCK ? db.dealerName(id) : id),
-    [],
+  const { data: team = [] } = useQuery({
+    queryKey: ["team", "all"],
+    queryFn: () => teamService.list("all"),
+    staleTime: 5 * 60_000,
+  });
+
+  const dealerName = useCallback((id: string) => (USE_MOCK ? db.dealerName(id) : id), []);
+
+  const repName = useCallback(
+    (id: string) => team.find((m) => m.id === id)?.name ?? (USE_MOCK ? db.repName(id) : id),
+    [team],
   );
-  const repName = useCallback((id: string) => (USE_MOCK ? db.repName(id) : id), []);
-  const reps = USE_MOCK
-    ? db.users.filter((u) => u.role === "sales").map((u) => ({ label: u.name, value: u.id }))
-    : [];
+
+  const reps = useMemo(
+    () =>
+      team
+        .filter((m) => m.position === "Sales Rep")
+        .map((m) => ({ label: m.name, value: m.id }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    [team],
+  );
 
   return { dealerName, repName, reps };
 }

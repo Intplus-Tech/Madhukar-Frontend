@@ -37,6 +37,16 @@ export default function AdminOrdersPage() {
     .filter((o) => o.status === "pending")
     .reduce((sum, o) => sum + (o.totalAmount ?? 0), 0);
 
+  async function exportOrders() {
+    const blob = await orderService.exportCsv(filters);
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `sales-orders-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div className="space-y-5">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -73,11 +83,7 @@ export default function AdminOrdersPage() {
           setApplied(draft);
           setPage(1);
         }}
-        onClear={() => {
-          setDraft(EMPTY_FILTERS);
-          setApplied(EMPTY_FILTERS);
-          setPage(1);
-        }}
+        onExport={() => void exportOrders()}
       />
 
       <OrdersTable

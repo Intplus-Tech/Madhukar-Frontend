@@ -437,8 +437,70 @@ export const orderService = {
       if (cell) cell.z = "#,##0.00";
     }
 
+    /*
+      A second sheet with one row per line item, so nothing is summarised away
+      — the first sheet answers "which orders", this one answers "what was in
+      them and what was billed".
+    */
+    const itemRows = collected.flatMap((o) =>
+      o.items.map((li) => ({
+        "Order ID": o.orderNumber,
+        Date: exportDate(o.createdAt),
+        Dealer: o.dealerName ?? (USE_MOCK ? db.dealerName(o.dealerId) : o.dealerId),
+        "Sales Rep": o.salesRepName ?? (USE_MOCK ? db.repName(o.salesRepId) : o.salesRepId),
+        Item: li.productName,
+        SKU: li.sku ?? "",
+        Unit: li.unit ?? "",
+        Qty: li.quantity,
+        "Unit Price": li.unitPrice ?? 0,
+        "Line Total": li.lineTotal ?? (li.unitPrice ?? 0) * li.quantity,
+        "Billing Status": li.isBilled ? "Billed" : "Pending",
+        "Qty Billed": li.billedQuantity ?? 0,
+        "Order Status": ORDER_STATUS_LABEL[o.status],
+      })),
+    );
+
+    const itemSheet = XLSX.utils.json_to_sheet(
+      itemRows.length
+        ? itemRows
+        : [
+            {
+              "Order ID": "",
+              Date: "",
+              Dealer: "",
+              "Sales Rep": "",
+              Item: "",
+              SKU: "",
+              Unit: "",
+              Qty: "",
+              "Unit Price": "",
+              "Line Total": "",
+              "Billing Status": "",
+              "Qty Billed": "",
+              "Order Status": "",
+            },
+          ],
+    );
+
+    itemSheet["!cols"] = [
+      { wch: 14 },
+      { wch: 14 },
+      { wch: 26 },
+      { wch: 18 },
+      { wch: 32 },
+      { wch: 14 },
+      { wch: 8 },
+      { wch: 7 },
+      { wch: 12 },
+      { wch: 13 },
+      { wch: 14 },
+      { wch: 11 },
+      { wch: 13 },
+    ];
+
     const book = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(book, sheet, "Sales Orders");
+    XLSX.utils.book_append_sheet(book, itemSheet, "Line Items");
 
     return new Blob([XLSX.write(book, { bookType: "xlsx", type: "array" })], {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
