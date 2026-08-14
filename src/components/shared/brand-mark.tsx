@@ -5,7 +5,7 @@ export function BrandMark({ className }: { className?: string }) {
   return (
     <Image
       src="/new-madhukar.png"
-      alt="Lakshya 72"
+      alt="new-madhukar"
       width={72}
       height={72}
       priority
