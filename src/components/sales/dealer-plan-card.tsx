@@ -44,9 +44,10 @@ export function DealerPlanCard({
   const [values, setValues] = useState<PlanFormValues>({
     orderPlanValue: mode === "plan" ? (row.plannedOrderAmount ?? 0) : 0,
     paymentPlanValue: mode === "plan" ? (row.plannedCollectionAmount ?? 0) : 0,
-    hasServiceIssue: false,
-    serviceIssueNote: "",
-    remarks: "",
+    // Editing starts from what was saved, not from a blank form
+    hasServiceIssue: mode === "plan" ? row.hasServicePlan : false,
+    serviceIssueNote: mode === "plan" ? (row.servicePlanNotes ?? "") : "",
+    remarks: mode === "plan" ? (row.notes ?? "") : "",
   });
 
   const set = <K extends keyof PlanFormValues>(key: K, value: PlanFormValues[K]) =>
@@ -58,6 +59,9 @@ export function DealerPlanCard({
   */
   const done = !row.id.startsWith("draft-") && row.status === "completed";
   const isUpdate = mode === "update";
+  /* A real id means this dealer already has a plan today, so submitting again
+     revises it rather than adding a second one. */
+  const hasExistingPlan = !row.id.startsWith("draft-");
 
   if (!expanded) {
     return (
@@ -169,8 +173,18 @@ export function DealerPlanCard({
             />
           </div>
 
+          {!isUpdate && hasExistingPlan && (
+            <p className="text-meta text-ink-muted">
+              This dealer already has a plan for today — saving will update it.
+            </p>
+          )}
+
           <Button type="submit" size="block" loading={submitting} className="tracking-[0.06em]">
-            {isUpdate ? "SUBMIT TODAY'S REPORT" : "SUBMIT PLAN"}
+            {isUpdate
+              ? "SUBMIT TODAY'S REPORT"
+              : hasExistingPlan
+                ? "UPDATE PLAN"
+                : "SUBMIT PLAN"}
           </Button>
         </form>
       </div>

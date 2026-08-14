@@ -9,6 +9,8 @@ import { mapVisitPlan, type ApiDealer, type ApiVisitPlan } from "../mappers";
 import { db } from "../mock/db";
 
 export interface SubmitPlanPayload {
+  /** Set when re-planning a dealer, so the existing record is updated. */
+  existingPlanId?: string;
   dealerId: string;
   salesRepId: string;
   routeId?: string;
@@ -40,6 +42,21 @@ interface RouteStop {
   dealerId?: string;
   dealerName?: string;
   dealer?: { _id?: string; id?: string; name?: string; location?: string };
+}
+
+/** Today's plan for a dealer, if one exists. */
+async function findPlanForDealer(dealerId: string, date: string) {
+  try {
+    const res = await http.get<{ data?: ApiVisitPlan[]; items?: ApiVisitPlan[] }>(
+      "/visit-plans",
+      { limit: 100 },
+    );
+    return (res.data ?? res.items ?? []).find(
+      (plan) => plan.dealerId === dealerId && (plan.visitDate ?? "").slice(0, 10) === date,
+    );
+  } catch {
+    return undefined;
+  }
 }
 
 const stopDealerId = (stop: RouteStop) =>
@@ -105,8 +122,46 @@ export const planningService = {
         100% — the route's stop count is the correct denominator.
       */
       const scheduled = stops.length || res.dealersScheduled || 0;
-      const planned = res.planProgress?.planned ?? res.planProgress?.completed ?? 0;
+
+      /*
+        Progress is "how many of today's dealers have a plan", so it counts
+        DISTINCT DEALERS rather than plan records — editing a plan leaves the
+        number unchanged, and it can never exceed the dealers on the route.
+      */
+      const routeDealerIds = new Set(stops.map(stopDealerId).filter(Boolean));
+      let planned = 0;
+      let orderPlanTotal = 0;
+
+      try {
+        const planRes = await http.get<{ data?: ApiVisitPlan[]; items?: ApiVisitPlan[] }>(
+          "/visit-plans",
+          { limit: 100 },
+        );
+        const todaysPlans = (planRes.data ?? planRes.items ?? []).filter(
+          (plan) => (plan.visitDate ?? "").slice(0, 10) === today(),
+        );
+
+        const plannedDealers = new Set(
+          todaysPlans
+            .map((plan) => plan.dealerId)
+            .filter((id) => routeDealerIds.size === 0 || routeDealerIds.has(id)),
+        );
+        planned = plannedDealers.size;
+
+        // One entry per dealer, so an edited plan isn't counted twice
+        const latestByDealer = new Map<string, ApiVisitPlan>();
+        todaysPlans.forEach((plan) => latestByDealer.set(plan.dealerId, plan));
+        orderPlanTotal = [...latestByDealer.values()].reduce(
+          (sum, plan) => sum + (plan.orderPlanAmount ?? 0),
+          0,
+        );
+      } catch {
+        planned = res.planProgress?.planned ?? 0;
+      }
+
       const total = scheduled || res.planProgress?.total || 0;
+      // A plan for an off-route dealer shouldn't push the bar past 100%
+      planned = total > 0 ? Math.min(planned, total) : planned;
 
       return {
         // Filled in by the page from the signed-in user
@@ -114,7 +169,7 @@ export const planningService = {
         routeName,
         date: (res.date ?? new Date().toISOString()).slice(0, 10),
         dealersScheduled: scheduled,
-        orderPlanValue: res.orderPlanTotal ?? 0,
+        orderPlanValue: orderPlanTotal || (res.orderPlanTotal ?? 0),
         plannedCount: planned,
         totalCount: total,
         planSubmitted: planned > 0,
@@ -245,7 +300,8 @@ export const planningService = {
               dealerById.get(entry.dealerId)?.location ??
               undefined,
           },
-          notes: existing?.remarks ?? "Scheduled visit",
+          // Keep the saved remarks so re-opening a plan shows what was written
+          notes: existing?.remarks || "Scheduled visit",
         };
       });
     }
@@ -290,7 +346,7 @@ export const planningService = {
 
   async submitPlan(payload: SubmitPlanPayload): Promise<VisitPlan> {
     if (!USE_MOCK) {
-      const created = await http.post<ApiVisitPlan>("/visit-plans", {
+      const body = {
         dealerId: payload.dealerId,
         visitDate: payload.plannedDate,
         plannedAmount: payload.paymentPlanValue,
@@ -298,10 +354,39 @@ export const planningService = {
         hasServiceIssue: payload.hasServiceIssue,
         serviceIssueNote: payload.serviceIssueNote,
         remarks: payload.remarks,
-      });
-      // Creating and submitting are separate calls — "SUBMIT PLAN" does both
-      const submitted = await http.post<ApiVisitPlan>(`/visit-plans/${created._id}/submit`);
-      return mapVisitPlan(submitted ?? created);
+      };
+
+      /*
+        Re-planning a dealer updates that dealer's existing plan. Creating a
+        second record would make Plan Progress climb past the number of dealers
+        actually planned for.
+      */
+      if (payload.existingPlanId) {
+        const updated = await http.patch<ApiVisitPlan>(
+          `/visit-plans/${payload.existingPlanId}`,
+          body,
+        );
+        return mapVisitPlan(updated);
+      }
+
+      try {
+        const created = await http.post<ApiVisitPlan>("/visit-plans", body);
+        // Creating and submitting are separate calls — "SUBMIT PLAN" does both
+        const submitted = await http.post<ApiVisitPlan>(`/visit-plans/${created._id}/submit`);
+        return mapVisitPlan(submitted ?? created);
+      } catch (error) {
+        /*
+          The API treats dealer + date as unique. If the list this screen was
+          built from is stale, the create is rejected — so find the plan that
+          already exists and update that instead of surfacing an error the rep
+          can do nothing about.
+        */
+        const existing = await findPlanForDealer(payload.dealerId, payload.plannedDate);
+        if (!existing) throw error;
+
+        const updated = await http.patch<ApiVisitPlan>(`/visit-plans/${existing._id}`, body);
+        return mapVisitPlan(updated);
+      }
     }
 
     const now = new Date().toISOString();

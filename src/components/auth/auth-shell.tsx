@@ -16,18 +16,21 @@ export function AuthShell({
   footer?: ReactNode;
 }) {
   return (
-    <div className="flex min-h-dvh flex-col bg-app">
-      <div className="flex flex-1 items-center justify-center px-6 py-10">
-        <div className="w-full max-w-mobile">
+    /* min-h-dvh fills the viewport; the body grows to push the footer down */
+    <div className="flex min-h-dvh w-full flex-col bg-app">
+      <div className="flex w-full flex-1 items-center justify-center px-6 py-8 sm:px-10">
+        {/*
+          Widens with the screen instead of staying pinned to the phone width —
+          430px on mobile, comfortably wider on tablet and desktop.
+        */}
+        <div className="w-full max-w-mobile sm:max-w-lg lg:max-w-xl">
           <div className="flex flex-col items-center text-center">
-            <BrandMark className="h-[72px] w-[72px]" />
-            {/* <h1 className="mt-4 font-display text-[26px] font-bold tracking-[0.02em] text-ink">
-              LAKSHYA 72
-            </h1> */}
-            <p className="mt-1.5 text-body-lg text-ink-muted">{APP_TAGLINE}</p>
+            <BrandMark className="h-72 w-72 sm:h-80 sm:w-80 lg:h-[360px] lg:w-[360px]" />
+            {/* Negative margin closes the transparent padding inside the PNG */}
+            <p className="-mt-8 text-body-lg text-ink-muted sm:-mt-10">{APP_TAGLINE}</p>
           </div>
 
-          <hr className="my-8 border-line" />
+          <hr className="my-6 border-line sm:my-8" />
 
           <div className="mb-6">
             <p className="text-body-lg font-medium text-ink">{title}</p>
@@ -40,7 +43,7 @@ export function AuthShell({
         </div>
       </div>
 
-      <footer className="px-6 pb-8 pt-4 text-center">
+      <footer className="w-full px-6 pb-8 pt-4 text-center">
         <p className="text-eyebrow font-semibold uppercase tracking-wide text-ink-muted">
           <Link href="/privacy" className="hover:text-ink">
             Privacy policy

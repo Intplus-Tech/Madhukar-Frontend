@@ -24,8 +24,10 @@ export default function PlanningPage() {
   });
 
   const submitPlan = useMutation({
-    mutationFn: (input: { dealerId: string; values: PlanFormValues }) =>
+    mutationFn: (input: { dealerId: string; planId?: string; values: PlanFormValues }) =>
       planningService.submitPlan({
+        // Present only when this dealer already has a plan today
+        existingPlanId: input.planId,
         dealerId: input.dealerId,
         salesRepId: user!.id,
         plannedDate: new Date().toISOString().slice(0, 10),
@@ -118,7 +120,13 @@ export default function PlanningPage() {
                   setExpandedId((prev) => (prev === String(index) ? null : String(index)))
                 }
                 submitting={submitPlan.isPending}
-                onSubmit={(values) => submitPlan.mutate({ dealerId: row.dealerId, values })}
+                onSubmit={(values) =>
+                  submitPlan.mutate({
+                    dealerId: row.dealerId,
+                    planId: row.id.startsWith("draft-") ? undefined : row.id,
+                    values,
+                  })
+                }
               />
             ))}
           </div>
