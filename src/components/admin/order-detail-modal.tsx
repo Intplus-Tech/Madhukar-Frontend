@@ -262,6 +262,7 @@ export function OrderDetailModal({
             </Button>
             <Button
               variant="navy"
+              className="text-white disabled:text-white"
               disabled={isComplete}
               loading={sendFeedback.isPending}
               onClick={() => {

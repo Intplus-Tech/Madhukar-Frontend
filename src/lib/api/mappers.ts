@@ -192,6 +192,12 @@ export interface ApiSalesOrder {
 }
 
 /**
+ * Marker written into `remarks` to carry order priority, which the API has no
+ * field for. Delete this once `priority` exists on the sales order.
+ */
+export const URGENT_TAG = "[URGENT]";
+
+/**
  * The API has a `partially_billed` state the original UI model didn't. It maps
  * onto `billed`, which the UI already treats as "some items done, not confirmed".
  */
@@ -221,6 +227,8 @@ export function mapSalesOrder(raw: ApiSalesOrder): SalesOrder {
     isBilled: li.billingStatus === "billed",
   }));
 
+  const isUrgent = (raw.remarks ?? "").includes(URGENT_TAG);
+
   return {
     id: raw._id,
     // The API has no separate human-readable number, so the id doubles as one
@@ -228,10 +236,11 @@ export function mapSalesOrder(raw: ApiSalesOrder): SalesOrder {
     dealerId: raw.dealerId,
     salesRepId: raw.salesRepId,
     items,
-    priority: "medium",
+    priority: isUrgent ? "urgent" : "medium",
     status: mapOrderStatus(raw.status),
     totalAmount: raw.orderAmount ?? items.reduce((s, li) => s + (li.lineTotal ?? 0), 0),
-    notes: raw.remarks,
+    // Strip the marker so it never shows up in the note itself
+    notes: (raw.remarks ?? "").replace(URGENT_TAG, "").trim() || undefined,
     dealerName: raw.dealerName,
     salesRepName: raw.salesRepName,
     createdAt: raw.orderDate ?? raw.createdAt ?? new Date().toISOString(),

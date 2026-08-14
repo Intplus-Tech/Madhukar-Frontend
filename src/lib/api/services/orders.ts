@@ -9,6 +9,7 @@ import type {
 import { USE_MOCK, delay, http } from "../http";
 import { ORDER_STATUS_LABEL } from "@/lib/constants";
 import {
+  URGENT_TAG,
   mapSalesOrder,
   mapPaginated,
   type ApiSalesOrder,
@@ -169,10 +170,23 @@ export const orderService = {
 
   async create(payload: CreateOrderPayload): Promise<SalesOrder> {
     if (!USE_MOCK) {
+      /*
+        The API has no priority field, so an urgent order is tagged in remarks
+        and read back out by the mapper. Remove this once the backend accepts
+        `priority` on POST /sales-orders — see URGENT_TAG in mappers.ts.
+      */
+      const remarks = [
+        payload.priority === "urgent" || payload.priority === "high" ? URGENT_TAG : "",
+        payload.notes?.trim() ?? "",
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .slice(0, 2000);
+
       const raw = await http.post<ApiSalesOrder>("/sales-orders", {
         dealerId: payload.dealerId,
         items: payload.items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
-        remarks: payload.notes,
+        remarks: remarks || undefined,
       });
       return mapSalesOrder(raw);
     }

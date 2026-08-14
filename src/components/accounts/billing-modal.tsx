@@ -144,7 +144,7 @@ export function BillingModal({
           {allBilled ? (
             <Button
               variant="success"
-              className="flex-1"
+              className="flex-1 text-white"
               loading={confirm.isPending}
               onClick={() => confirm.mutate()}
             >
@@ -153,7 +153,7 @@ export function BillingModal({
           ) : (
             <Button
               variant="danger"
-              className="flex-1"
+              className="flex-1 text-white disabled:text-white"
               disabled={noneBilled && !note.trim()}
               loading={sendFeedback.isPending}
               onClick={() => sendFeedback.mutate()}
