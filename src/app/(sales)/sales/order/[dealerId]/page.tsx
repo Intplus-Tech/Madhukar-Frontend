@@ -249,7 +249,7 @@ export default function ComposeOrderPage({
           onClick={() => createOrder.mutate()}
           className="tracking-[0.06em]"
         >
-          SUBMIT ISSUE
+          SUBMIT ORDER
         </Button>
       </div>
     </>
